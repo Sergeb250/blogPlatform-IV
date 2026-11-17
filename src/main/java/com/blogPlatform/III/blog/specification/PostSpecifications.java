@@ -26,7 +26,7 @@ public class PostSpecifications {
     }
 
     public static Specification<Post> matchesKeyword(String keyword) {
-        // match_against is our own Hibernate function (config/MySqlFunctionContributor)
+        // match_against is our own Hibernate function (util/MySqlFunctionContributor)
         return (root, query, cb) -> cb.greaterThan(
                 cb.function("match_against", Double.class,
                         root.get("title"), root.get("content"), cb.literal(keyword)),

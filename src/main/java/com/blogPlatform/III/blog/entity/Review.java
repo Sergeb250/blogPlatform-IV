@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 
 // soft delete: remove() runs this UPDATE instead of a DELETE, and every query skips rows with deleted_at set.
 // verify = RowCount: 0 rows updated (deleted at the same moment by someone else) is an error, not a silent success.
-// one review per user per post, counting live reviews only: see config/SoftDeleteSchemaInitializer
+// one review per user per post, counting live reviews only: see util/SoftDeleteSchemaInitializer
 @Entity
 // covering index for "live reviews and their average per post" (popular, top rated): no row has to be read
 @Table(name = "reviews",

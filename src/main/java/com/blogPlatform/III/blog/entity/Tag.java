@@ -17,7 +17,7 @@ import java.util.Set;
 // soft delete: remove() runs this UPDATE instead of a DELETE, and every query skips rows with deleted_at set.
 // verify = RowCount: 0 rows updated (deleted at the same moment by someone else) is an error, not a silent success.
 // The post_tags links stay; a deleted tag simply no longer shows up on its posts.
-// The name is unique among live tags only: see config/SoftDeleteSchemaInitializer
+// The name is unique among live tags only: see util/SoftDeleteSchemaInitializer
 @Entity
 @Table(name = "tags")
 @SQLDelete(sql = "UPDATE tags SET deleted_at = NOW(6) WHERE tag_id = ? AND deleted_at IS NULL",

@@ -1,4 +1,4 @@
-package com.blogPlatform.III.blog.config;
+package com.blogPlatform.III.blog.util;
 
 import org.hibernate.boot.model.FunctionContributions;
 import org.hibernate.boot.model.FunctionContributor;
