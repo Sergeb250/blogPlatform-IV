@@ -18,6 +18,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -32,13 +33,18 @@ public class SecurityConfig {
 
     private final SecurityErrorHandler errorHandler;
     private final JwtService jwtService;
+    private final CorsConfigurationSource corsConfigurationSource;
 
     @Bean
     public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
         http
+                // allowed browser origins (CorsConfig); first in the chain, so a preflight never needs a token
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 // no server session: every request proves by itself who sends it (its JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // CSRF abuses cookies the browser sends on its own; this API keeps no login cookie
+                // CSRF tricks the browser into sending a cookie it attaches on its own. This API has no login
+                // cookie: the token must be put into the Authorization header by our own code, which a
+                // foreign page can't do. So there is nothing for CSRF to abuse here.
                 .csrf(AbstractHttpConfigurer::disable)
                 // a JSON API: no browser password pop-up, no HTML login page, no /logout redirect
                 .httpBasic(AbstractHttpConfigurer::disable)
