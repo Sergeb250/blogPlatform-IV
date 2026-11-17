@@ -77,9 +77,7 @@ class RepositoryTest {
         assertTrue(userRepository.existsByEmail("anna@test.com"));
         assertFalse(userRepository.existsByUsername("nobody"));
 
-        assertEquals(2, postRepository.findByAuthorUsername("serge").size());
-        assertEquals(2, postRepository.findByTagsName("spring").size());
-        assertEquals(1, postRepository.findByStatus(PostStatus.DRAFT).size());
+        assertEquals(1, postRepository.countByStatus(PostStatus.DRAFT));
         assertTrue(postRepository.existsByAuthorIdAndTitle(serge.getId(), "Java records"));
 
         assertEquals(2, commentRepository.countByPostId(springPost.getId()));

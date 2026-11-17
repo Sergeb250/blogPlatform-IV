@@ -14,15 +14,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificationExecutor<Post> {
-
-//    List<Post> findByAuthorUsername(String username);
-//
-//    List<Post> findByTagsName(String tagName);
-//
-//    List<Post> findByStatus(PostStatus status);
 
     long countByStatus(PostStatus status);
 

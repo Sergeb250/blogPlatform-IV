@@ -5,8 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.annotation.Order;
-import com.blogPlatform.III.blog.util.PasswordUtil;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -47,6 +47,7 @@ public class DataSeeder implements CommandLineRunner {
             "Clear explanation.", "This saved me a lot of time.", "Interesting point of view.", "Nice examples."};
 
     private final JdbcTemplate jdbc;
+    private final PasswordEncoder passwordEncoder;
     // fixed seed: the same data on every run, so before/after measurements compare fairly
     private final Random random = new Random(42);
     private final LocalDateTime firstDay = LocalDateTime.of(2024, 1, 1, 0, 0);
@@ -74,16 +75,24 @@ public class DataSeeder implements CommandLineRunner {
 
     private void seedUsers() {
         // BCrypt is slow on purpose: hash once, all seeded users share the password
-        String passwordHash = PasswordUtil.hash("password123");
+        String passwordHash = passwordEncoder.encode("password123");
 
         List<Object[]> rows = new ArrayList<>();
         for (int id = 1; id <= USERS; id++) {
-            String role = id <= AUTHORS ? "AUTHOR" : "READER";
-            rows.add(new Object[]{id, "user" + id, "user" + id + "@blog.com", passwordHash, role, randomDate()});
+            rows.add(new Object[]{id, "user" + id, "user" + id + "@blog.com", passwordHash, "LOCAL", randomDate()});
         }
         insert("users",
-                "INSERT INTO users (user_id, username, email, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO users (user_id, username, email, password_hash, auth_provider, created_at) "
+                        + "VALUES (?, ?, ?, ?, ?, ?)",
                 rows);
+
+        // one statement for all 1,000 links: the first AUTHORS users write, the rest read
+        int links = jdbc.update("""
+                INSERT INTO user_roles (user_id, role_id)
+                SELECT u.user_id, r.role_id FROM users u
+                JOIN roles r ON r.name = IF(u.user_id <= ?, 'AUTHOR', 'READER')
+                """, AUTHORS);
+        log.info("  user_roles: {} rows", links);
     }
 
     private void seedTags() {

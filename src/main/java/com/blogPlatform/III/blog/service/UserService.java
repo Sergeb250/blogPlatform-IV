@@ -5,17 +5,19 @@ import com.blogPlatform.III.blog.dto.request.UserRequest;
 import com.blogPlatform.III.blog.dto.response.PageResponse;
 import com.blogPlatform.III.blog.dto.response.UserResponse;
 import com.blogPlatform.III.blog.entity.Role;
+import com.blogPlatform.III.blog.entity.RoleName;
 import com.blogPlatform.III.blog.entity.User;
 import com.blogPlatform.III.blog.exception.DuplicateResourceException;
 import com.blogPlatform.III.blog.exception.ResourceNotFoundException;
+import com.blogPlatform.III.blog.repository.RoleRepository;
 import com.blogPlatform.III.blog.repository.UserRepository;
-import com.blogPlatform.III.blog.util.PasswordUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public UserResponse create(UserRequest request) {
@@ -36,7 +40,7 @@ public class UserService {
         }
 
         User user = new User();
-       // copyRequestToUser(request, user);
+        copyRequestToUser(request, user);
         return UserResponse.from(userRepository.save(user));
     }
 
@@ -92,7 +96,14 @@ public class UserService {
     private void copyRequestToUser(UserRequest request, User user) {
         user.setUsername(request.username());
         user.setEmail(request.email());
-        user.setPasswordHash(PasswordUtil.hash(request.password()));
-        user.setRole(request.role() != null ? request.role() : Role.READER);
+        user.setPasswordHash(passwordEncoder.encode(request.password()));
+        user.getRoles().clear();
+        user.getRoles().add(findRole(request.role() != null ? request.role() : RoleName.READER));
+    }
+
+    private Role findRole(RoleName name) {
+        // the three roles are inserted at startup (RoleSchemaInitializer), so a miss means a broken database
+        return roleRepository.findByName(name)
+                .orElseThrow(() -> new IllegalStateException("Role " + name + " is missing in the roles table"));
     }
 }

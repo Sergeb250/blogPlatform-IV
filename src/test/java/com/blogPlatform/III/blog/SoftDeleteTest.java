@@ -4,7 +4,7 @@ import com.blogPlatform.III.blog.dto.request.*;
 import com.blogPlatform.III.blog.dto.response.*;
 import com.blogPlatform.III.blog.entity.Post;
 import com.blogPlatform.III.blog.entity.PostStatus;
-import com.blogPlatform.III.blog.entity.Role;
+import com.blogPlatform.III.blog.entity.RoleName;
 import com.blogPlatform.III.blog.exception.ContentRejectedException;
 import com.blogPlatform.III.blog.exception.ResourceNotFoundException;
 import com.blogPlatform.III.blog.repository.PostRepository;
@@ -57,7 +57,7 @@ class SoftDeleteTest {
     @BeforeEach
     void setUp() throws ContentRejectedException {
         cleanDatabase();
-        author = userService.create(new UserRequest("author", "author@test.com", "secret123", Role.AUTHOR));
+        author = userService.create(new UserRequest("author", "author@test.com", "secret123", RoleName.AUTHOR));
         reader = userService.create(new UserRequest("reader", "reader@test.com", "secret123", null));
         post = postService.create(new PostRequest(author.id(), "Soft delete explained",
                 "Deleted rows stay in the zebra table", PostStatus.PUBLISHED, List.of("java", "spring")));
@@ -189,8 +189,8 @@ class SoftDeleteTest {
     void twoLiveUsersWithTheSameUsername_areStillBlockedByTheDatabase() {
         // straight SQL, past the service's own check: the unique key (username, not_deleted) still works
         assertThrows(DuplicateKeyException.class, () -> jdbc.update("""
-                INSERT INTO users (username, email, password_hash, role, created_at)
-                VALUES ('reader', 'other@test.com', 'hash', 'READER', NOW())
+                INSERT INTO users (username, email, password_hash, created_at)
+                VALUES ('reader', 'other@test.com', 'hash', NOW())
                 """));
     }
 

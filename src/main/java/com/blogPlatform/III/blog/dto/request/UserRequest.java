@@ -1,6 +1,6 @@
 package com.blogPlatform.III.blog.dto.request;
 
-import com.blogPlatform.III.blog.entity.Role;
+import com.blogPlatform.III.blog.entity.RoleName;
 import com.blogPlatform.III.blog.validation.Username;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -21,6 +21,6 @@ public record UserRequest(
         @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).+$", message = "must contain at least one letter and one digit")
         String password,
 
-        @Schema(example = "AUTHOR", description = "optional, READER if missing") Role role
+        @Schema(example = "AUTHOR", description = "optional, READER if missing") RoleName role
 ) {
 }

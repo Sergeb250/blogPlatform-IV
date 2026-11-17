@@ -2,7 +2,6 @@ package com.blogPlatform.III.blog;
 
 import com.blogPlatform.III.blog.entity.*;
 import com.blogPlatform.III.blog.repository.*;
-import com.blogPlatform.III.blog.util.PasswordUtil;
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -11,6 +10,7 @@ import org.springframework.cache.CacheManager;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +33,7 @@ class ApiTest {
     @Autowired UserRepository userRepository;
     @Autowired PostRepository postRepository;
     @Autowired TagRepository tagRepository;
+    @Autowired PasswordEncoder passwordEncoder;
 
     User serge;
     Post post;
@@ -79,13 +80,14 @@ class ApiTest {
                 .andExpect(jsonPath("$.message").value("User created successfully"))
                 .andExpect(jsonPath("$.timestamp").exists())
                 .andExpect(jsonPath("$.data.username").value("anna"))
-                .andExpect(jsonPath("$.data.role").value("READER"))
+                .andExpect(jsonPath("$.data.roles[0]").value("READER"))
+                .andExpect(jsonPath("$.data.authProvider").value("LOCAL"))
                 .andExpect(jsonPath("$.data.passwordHash").doesNotExist())
                 .andExpect(jsonPath("$.errors").doesNotExist());
 
         String storedHash = userRepository.findByUsername("anna").orElseThrow().getPasswordHash();
         assertNotEquals("secret123", storedHash);
-        assertTrue(PasswordUtil.matches("secret123", storedHash));
+        assertTrue(passwordEncoder.matches("secret123", storedHash));
     }
 
     @Test
