@@ -13,7 +13,7 @@ Every phase is built from the user stories of the project brief. When a phase is
 | 3 | JWT authentication | 2.1, 2.2 | Done | [phase-3](Docs/explained/phase-3-jwt-authentication.md) |
 | 4 | Role-based access control (RBAC) | 4.2 | Done | [phase-4](Docs/explained/phase-4-rbac.md) |
 | 5 | CORS and CSRF | 1.2, 3.1, 3.2 | Done | [phase-5](Docs/explained/phase-5-cors-csrf.md) |
-| 6 | Google OAuth2 login | 4.1 | Planned | [phase-6](Docs/explained/phase-6-google-oauth2.md) |
+| 6 | Google OAuth2 login | 4.1 | Done | [phase-6](Docs/explained/phase-6-google-oauth2.md) |
 | 7 | DSA: token blacklist, sessions, hashing | 5.1 | Planned | [phase-7](Docs/explained/phase-7-dsa-tokens.md) |
 | 8 | Security event logging and monitoring | 5.2 | Planned | [phase-8](Docs/explained/phase-8-security-monitoring.md) |
 | 9 | OpenAPI, Postman, README, tests | Deliverables | Planned | [phase-9](Docs/explained/phase-9-docs-and-testing.md) |
@@ -117,9 +117,10 @@ the demo form works with the token and fails without it.
 **Story 4.1:** *log in with Google without registering.*
 
 **Tasks**
-- [ ] Dependency `spring-boot-starter-oauth2-client`, enabled with the `google` profile (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
-- [ ] After Google: find the user by verified email or create one (`GOOGLE`, role `READER`)
-- [ ] Answer with our own JWT (JSON, or a redirect to a frontend)
+- [x] Dependency `spring-boot-starter-oauth2-client`, enabled with the `google` profile (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
+- [x] After Google: find the user by verified email or create one (`GOOGLE`, role `READER`)
+- [x] Unverified Google emails are refused; a new user gets a username from the email (`maria.lopez`, `maria-2`, ...)
+- [x] Answer with our own JWT (JSON, or a redirect to a frontend)
 
 **Done when:** `/oauth2/authorization/google` sends the browser to Google, and the callback creates the user and returns a token.
 
