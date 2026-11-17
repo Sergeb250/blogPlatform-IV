@@ -60,6 +60,12 @@ class SecurityConfigTest {
     }
 
     @Test
+    void withoutGoogleKeys_theAppRuns_andGoogleLoginIsOff() throws Exception {
+        // the "test" profile has no Google client: no OAuth2 filter, so nothing answers this URL
+        mockMvc.perform(get("/oauth2/authorization/google")).andExpect(status().isNotFound());
+    }
+
+    @Test
     void signUp_needsNoLogin() throws Exception {
         mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                         .content("""

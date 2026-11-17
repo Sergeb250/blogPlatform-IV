@@ -2,7 +2,9 @@ package com.blogPlatform.III.blog.security;
 
 import com.blogPlatform.III.blog.security.jwt.JwtAuthenticationFilter;
 import com.blogPlatform.III.blog.security.jwt.JwtService;
+import com.blogPlatform.III.blog.security.oauth2.GoogleLoginHandler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
@@ -18,6 +20,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -55,7 +58,11 @@ public class SecurityConfig {
 
     @Bean
     @Order(2)
-    public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
+    // GoogleLoginHandler is a parameter, not a field: it needs AuthService -> AuthenticationManager, which is
+    // made in this class, so it can only be built once this class exists (a field would be a circular reference)
+    public SecurityFilterChain apiSecurity(HttpSecurity http,
+                                           ObjectProvider<ClientRegistrationRepository> googleClient,
+                                           GoogleLoginHandler googleLoginHandler) throws Exception {
         http
                 // allowed browser origins (CorsConfig); first in the chain, so a preflight never needs a token
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
@@ -77,6 +84,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_READS).permitAll()
                         .requestMatchers(API_DOCS).permitAll()
+                        // the start of a Google login, and Google's way back with the one-time code
+                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                         // Spring forwards errors to /error; showing an error must not need a login
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -84,6 +93,14 @@ public class SecurityConfig {
                 // the token is read before the access rules run, so the rules already know who is calling
                 .addFilterBefore(new JwtAuthenticationFilter(jwtService, errorHandler),
                         UsernamePasswordAuthenticationFilter.class);
+
+        // Google login only when a Google client is configured (profile "google"), so the app also starts
+        // without Google keys. Spring does the OAuth2 round trip; our handler turns the result into our JWT.
+        if (googleClient.getIfAvailable() != null) {
+            http.oauth2Login(oauth -> oauth
+                    .successHandler(googleLoginHandler)
+                    .failureHandler(googleLoginHandler));
+        }
         return http.build();
     }
 

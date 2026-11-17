@@ -34,8 +34,8 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
                 "Authentication required: log in and send 'Authorization: Bearer <token>'");
     }
 
-    // 401 with the exact reason (expired, bad signature, ...), used by JwtAuthenticationFilter
-    public void rejectToken(HttpServletRequest request, HttpServletResponse response, String reason) throws IOException {
+    // 401 with the exact reason: a bad token (JwtAuthenticationFilter) or a failed Google login (GoogleLoginHandler)
+    public void unauthorized(HttpServletRequest request, HttpServletResponse response, String reason) throws IOException {
         write(request, response, HttpStatus.UNAUTHORIZED, reason);
     }
 

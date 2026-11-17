@@ -44,16 +44,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             user = jwtService.toAuthUser(jwtService.verify(header.substring(BEARER.length())));
         } catch (ExpiredJwtException e) {
-            errorHandler.rejectToken(request, response, "Token has expired, please log in again");
+            errorHandler.unauthorized(request, response, "Token has expired, please log in again");
             return;
         } catch (SignatureException e) {
-            errorHandler.rejectToken(request, response, "Token signature is not valid");
+            errorHandler.unauthorized(request, response, "Token signature is not valid");
             return;
         } catch (UnsupportedJwtException e) {
-            errorHandler.rejectToken(request, response, "Unsigned tokens are not accepted");
+            errorHandler.unauthorized(request, response, "Unsigned tokens are not accepted");
             return;
         } catch (JwtException | IllegalArgumentException e) {
-            errorHandler.rejectToken(request, response, "Token is malformed or not valid");
+            errorHandler.unauthorized(request, response, "Token is malformed or not valid");
             return;
         }
 
