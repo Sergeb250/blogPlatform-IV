@@ -48,16 +48,14 @@ class RoleSchemaTest {
     }
 
     @Test
-    void newUser_getsItsRoleThroughUserRoles() {
-        UserResponse anna = userService.create(new UserRequest("anna", "anna@test.com", "secret123", null));
-        UserResponse ben = userService.create(new UserRequest("ben", "ben@test.com", "secret123", RoleName.AUTHOR));
+    void newUser_isAReader_throughUserRoles() {
+        UserResponse anna = userService.register(new UserRequest("anna", "anna@test.com", "secret123"));
 
         assertEquals(Set.of(RoleName.READER), anna.roles());
-        assertEquals(Set.of(RoleName.AUTHOR), ben.roles());
         assertEquals(AuthProvider.LOCAL, anna.authProvider());
-        assertEquals("AUTHOR", jdbc.queryForObject("""
+        assertEquals("READER", jdbc.queryForObject("""
                 SELECT r.name FROM user_roles ur JOIN roles r ON r.role_id = ur.role_id WHERE ur.user_id = ?
-                """, String.class, ben.id()));
+                """, String.class, anna.id()));
     }
 
     @Test
@@ -91,7 +89,7 @@ class RoleSchemaTest {
 
     @Test
     void deletingAUserRow_removesItsRoleLinks() {
-        UserResponse anna = userService.create(new UserRequest("anna", "anna@test.com", "secret123", null));
+        UserResponse anna = userService.register(new UserRequest("anna", "anna@test.com", "secret123"));
 
         jdbc.update("DELETE FROM users WHERE user_id = ?", anna.id());
 

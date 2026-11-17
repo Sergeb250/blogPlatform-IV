@@ -181,7 +181,7 @@ class CacheTest {
     void renamedAuthor_isShownInCachedPosts() {
         assertEquals("serge", postService.getById(post.getId()).authorUsername());
 
-        userService.update(author.getId(), new UserRequest("serge_new", "serge@test.com", "secret123", null));
+        userService.update(author.getId(), new UserRequest("serge_new", "serge@test.com", "secret123"));
 
         assertEquals("serge_new", userService.getById(author.getId()).username());
         assertEquals("serge_new", postService.getById(post.getId()).authorUsername());

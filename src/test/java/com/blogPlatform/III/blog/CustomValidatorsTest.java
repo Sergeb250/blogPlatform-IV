@@ -65,7 +65,7 @@ class CustomValidatorsTest {
     }
 
     private static UserRequest user(String username) {
-        return new UserRequest(username, "serge@test.com", "secret123", null);
+        return new UserRequest(username, "serge@test.com", "secret123");
     }
 
     private static Map<String, String> errors(Object request) {

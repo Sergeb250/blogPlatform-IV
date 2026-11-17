@@ -42,7 +42,7 @@ public class SecurityConfig {
                         .accessDeniedHandler(errorHandler))
                 // checked top to bottom, the first matching rule wins
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.POST, "/api/users").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_READS).permitAll()
                         .requestMatchers(API_DOCS).permitAll()
                         // Spring forwards errors to /error; showing an error must not need a login

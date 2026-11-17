@@ -31,7 +31,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Transactional
-    public UserResponse create(UserRequest request) {
+    public UserResponse register(UserRequest request) {
         if (userRepository.existsByUsername(request.username())) {
             throw new DuplicateResourceException("Username '" + request.username() + "' is already taken");
         }
@@ -41,6 +41,8 @@ public class UserService {
 
         User user = new User();
         copyRequestToUser(request, user);
+        // every new account starts as a reader: nobody can sign up as an author or admin
+        user.getRoles().add(findRole(RoleName.READER));
         return UserResponse.from(userRepository.save(user));
     }
 
@@ -97,8 +99,6 @@ public class UserService {
         user.setUsername(request.username());
         user.setEmail(request.email());
         user.setPasswordHash(passwordEncoder.encode(request.password()));
-        user.getRoles().clear();
-        user.getRoles().add(findRole(request.role() != null ? request.role() : RoleName.READER));
     }
 
     private Role findRole(RoleName name) {

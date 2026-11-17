@@ -2,8 +2,11 @@ package com.blogPlatform.III.blog;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 @SpringBootApplication
+// finds @ConfigurationProperties records such as JwtProperties (app.jwt.*)
+@ConfigurationPropertiesScan
 public class BlogApplication {
 
 	public static void main(String[] args) {

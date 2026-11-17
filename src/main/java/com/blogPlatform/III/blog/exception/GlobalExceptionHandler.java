@@ -8,6 +8,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.method.ParameterErrors;
@@ -47,6 +48,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleContentRejected(ContentRejectedException ex,
                                                                    HttpServletRequest request) {
         return ApiResponse.error(HttpStatus.BAD_REQUEST, ex.getMessage(), request.getRequestURI());
+    }
+
+    // one message for a wrong username and a wrong password: nobody can find out which usernames exist
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadCredentials(HttpServletRequest request) {
+        return ApiResponse.error(HttpStatus.UNAUTHORIZED, "Invalid username or password", request.getRequestURI());
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)

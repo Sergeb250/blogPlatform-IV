@@ -75,7 +75,7 @@ class ApiTest {
 
     @Test
     void createUser_returns201_withStandardShape() throws Exception {
-        mockMvc.perform(post("/api/users")
+        mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username": "anna", "email": "anna@test.com", "password": "secret123"}
@@ -83,7 +83,7 @@ class ApiTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.status").value(201))
-                .andExpect(jsonPath("$.message").value("User created successfully"))
+                .andExpect(jsonPath("$.message").value("User registered successfully"))
                 .andExpect(jsonPath("$.timestamp").exists())
                 .andExpect(jsonPath("$.data.username").value("anna"))
                 .andExpect(jsonPath("$.data.roles[0]").value("READER"))
@@ -98,7 +98,7 @@ class ApiTest {
 
     @Test
     void createUser_withBadData_returns400() throws Exception {
-        mockMvc.perform(post("/api/users")
+        mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username": "", "email": "not-an-email", "password": "123"}
@@ -107,7 +107,7 @@ class ApiTest {
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.path").value("/api/users"))
+                .andExpect(jsonPath("$.path").value("/api/auth/register"))
                 .andExpect(jsonPath("$.errors.username").exists())
                 .andExpect(jsonPath("$.errors.email").exists())
                 .andExpect(jsonPath("$.errors.password").exists())
@@ -116,7 +116,7 @@ class ApiTest {
 
     @Test
     void createUser_withTakenUsername_returns409() throws Exception {
-        mockMvc.perform(post("/api/users")
+        mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username": "serge", "email": "other@test.com", "password": "secret123"}
@@ -128,7 +128,7 @@ class ApiTest {
 
     @Test
     void brokenJson_returns400() throws Exception {
-        mockMvc.perform(post("/api/users")
+        mockMvc.perform(post("/api/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ this is not json"))
                 .andExpect(status().isBadRequest())
@@ -601,7 +601,7 @@ class ApiTest {
 
     @Test
     void strictJson_unknownField_returns400() throws Exception {
-        mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username": "anna", "email": "anna@test.com", "password": "secret123", "isAdmin": true}
                                 """))
@@ -647,7 +647,7 @@ class ApiTest {
 
     @Test
     void user_strictRules() throws Exception {
-        mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username": "bad name!", "email": "anna@localhost", "password": "onlyletters"}
                                 """))

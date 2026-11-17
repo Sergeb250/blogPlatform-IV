@@ -61,7 +61,7 @@ class SecurityConfigTest {
 
     @Test
     void signUp_needsNoLogin() throws Exception {
-        mockMvc.perform(post("/api/users").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"username": "anna", "email": "anna@test.com", "password": "secret123"}
                                 """))
@@ -113,24 +113,24 @@ class SecurityConfigTest {
 
     @Test
     void authenticationManager_acceptsTheRightPassword() {
-        userService.create(new UserRequest("ben", "ben@test.com", "secret123", RoleName.AUTHOR));
+        userService.register(new UserRequest("ben", "ben@test.com", "secret123"));
 
         Authentication result = authenticate("ben", "secret123");
 
         assertTrue(result.isAuthenticated());
         AuthUser ben = (AuthUser) result.getPrincipal();
         assertEquals("ben", ben.username());
-        assertEquals(Set.of(RoleName.AUTHOR), ben.roles());
-        // ROLE_AUTHOR: what hasRole('AUTHOR') looks for.
+        assertEquals(Set.of(RoleName.READER), ben.roles());
+        // ROLE_READER: what hasRole('READER') looks for.
         // FACTOR_PASSWORD: added by Spring Security 7, it records HOW the user proved who they are
-        assertEquals(Set.of("ROLE_AUTHOR", "FACTOR_PASSWORD"),
+        assertEquals(Set.of("ROLE_READER", "FACTOR_PASSWORD"),
                 result.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet()));
         assertFalse(ben.toString().contains("$2a$"), "the password hash must never be printed");
     }
 
     @Test
     void wrongPasswordAndUnknownUser_failTheSameWay() {
-        userService.create(new UserRequest("ben", "ben@test.com", "secret123", null));
+        userService.register(new UserRequest("ben", "ben@test.com", "secret123"));
 
         BadCredentialsException wrongPassword = assertThrows(BadCredentialsException.class,
                 () -> authenticate("ben", "wrong-password1"));
@@ -143,7 +143,7 @@ class SecurityConfigTest {
 
     @Test
     void deletedUser_cannotLogIn() {
-        UserResponse ben = userService.create(new UserRequest("ben", "ben@test.com", "secret123", null));
+        UserResponse ben = userService.register(new UserRequest("ben", "ben@test.com", "secret123"));
         userService.delete(ben.id());
 
         assertThrows(BadCredentialsException.class, () -> authenticate("ben", "secret123"));

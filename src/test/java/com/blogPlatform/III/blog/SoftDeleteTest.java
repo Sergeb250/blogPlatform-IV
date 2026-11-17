@@ -4,7 +4,6 @@ import com.blogPlatform.III.blog.dto.request.*;
 import com.blogPlatform.III.blog.dto.response.*;
 import com.blogPlatform.III.blog.entity.Post;
 import com.blogPlatform.III.blog.entity.PostStatus;
-import com.blogPlatform.III.blog.entity.RoleName;
 import com.blogPlatform.III.blog.exception.ContentRejectedException;
 import com.blogPlatform.III.blog.exception.ResourceNotFoundException;
 import com.blogPlatform.III.blog.repository.PostRepository;
@@ -57,8 +56,8 @@ class SoftDeleteTest {
     @BeforeEach
     void setUp() throws ContentRejectedException {
         cleanDatabase();
-        author = userService.create(new UserRequest("author", "author@test.com", "secret123", RoleName.AUTHOR));
-        reader = userService.create(new UserRequest("reader", "reader@test.com", "secret123", null));
+        author = userService.register(new UserRequest("author", "author@test.com", "secret123"));
+        reader = userService.register(new UserRequest("reader", "reader@test.com", "secret123"));
         post = postService.create(new PostRequest(author.id(), "Soft delete explained",
                 "Deleted rows stay in the zebra table", PostStatus.PUBLISHED, List.of("java", "spring")));
     }
@@ -179,7 +178,7 @@ class SoftDeleteTest {
     void deletedUser_usernameAndEmailCanBeUsedAgain() {
         userService.delete(reader.id());
 
-        UserResponse newReader = userService.create(new UserRequest("reader", "reader@test.com", "secret123", null));
+        UserResponse newReader = userService.register(new UserRequest("reader", "reader@test.com", "secret123"));
 
         assertNotEquals(reader.id(), newReader.id());
         assertEquals(2, jdbc.queryForObject("SELECT COUNT(*) FROM users WHERE username = 'reader'", Integer.class));

@@ -27,15 +27,6 @@ public class UserController {
 
     private final UserService userService;
 
-    @Operation(summary = "Create a user",
-            description = "Username 3-50 chars (letters, digits . _ -), valid email, password 8-100 chars with a "
-                    + "letter and a digit. The password is stored as a BCrypt hash and never returned. "
-                    + "Role is READER if not given. 400: invalid body. 409: username or email already used.")
-    @PostMapping
-    public ResponseEntity<ApiResponse<UserResponse>> create(@Valid @RequestBody UserRequest request) {
-        return ApiResponse.created("User created successfully", userService.create(request));
-    }
-
     @Operation(summary = "List users (paged)",
             description = "Default: page 0, 20 users, A → Z by username. size: 1-100. "
                     + "Sort fields: id, username, createdAt. 400: invalid size or sort.")
@@ -60,8 +51,8 @@ public class UserController {
     }
 
     @Operation(summary = "Update a user",
-            description = "Same rules as create. 400: invalid body. 404: user not found. "
-                    + "409: username or email already used.")
+            description = "Same rules as sign-up (POST /api/auth/register); the roles stay as they are. "
+                    + "400: invalid body. 404: user not found. 409: username or email already used.")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<UserResponse>> update(@PathVariable @Positive Long id,
                                                             @Valid @RequestBody UserRequest request) {
