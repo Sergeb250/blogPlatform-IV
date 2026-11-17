@@ -1,5 +1,6 @@
 package com.blogPlatform.III.blog.repository;
 
+import com.blogPlatform.III.blog.entity.RoleName;
 import com.blogPlatform.III.blog.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -38,4 +39,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.email = :email AND u.deletedAt IS NULL")
     boolean existsByEmail(@Param("email") String email);
+
+    @Query("SELECT COUNT(u) > 0 FROM User u JOIN u.roles r WHERE r.name = :role AND u.deletedAt IS NULL")
+    boolean existsByRole(@Param("role") RoleName role);
 }
