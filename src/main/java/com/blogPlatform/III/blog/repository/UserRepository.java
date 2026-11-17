@@ -3,6 +3,7 @@ package com.blogPlatform.III.blog.repository;
 import com.blogPlatform.III.blog.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -27,6 +28,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT COUNT(u) FROM User u WHERE u.deletedAt IS NULL")
     long count();
 
+    // roles in the same query: login reads them after this call, outside any transaction (LAZY would fail there)
+    @EntityGraph(attributePaths = "roles")
     @Query("SELECT u FROM User u WHERE u.username = :username AND u.deletedAt IS NULL")
     Optional<User> findByUsername(@Param("username") String username);
 

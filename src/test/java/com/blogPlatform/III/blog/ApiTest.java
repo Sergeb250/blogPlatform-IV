@@ -11,9 +11,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.security.test.context.support.TestExecutionEvent;
+import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.hamcrest.Matchers.allOf;
@@ -29,7 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 @Transactional
 // these tests check API behavior (paging, validation, ...) as a logged-in user; who may call what is SecurityConfigTest
-@WithMockUser
+// "serge" is created in setUp(), so it is loaded (AppUserDetailsService) just before each test, not before setUp
+@WithUserDetails(value = "serge", setupBefore = TestExecutionEvent.TEST_EXECUTION)
 class ApiTest {
 
     @Autowired MockMvc mockMvc;
@@ -496,6 +499,9 @@ class ApiTest {
     }
 
     @Test
+    // the audit row is committed by its own transaction (REQUIRES_NEW). Under MySQL's REPEATABLE READ this test's
+    // transaction keeps the snapshot of its first read (loading the logged-in user), so it would never see the row.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     void auditLog_recordsPostActions() throws Exception {
         mockMvc.perform(patch("/api/posts/" + post.getId() + "/publish"))
                 .andExpect(status().isOk());
