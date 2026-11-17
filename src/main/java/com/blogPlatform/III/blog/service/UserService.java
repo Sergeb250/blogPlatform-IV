@@ -4,6 +4,7 @@ import com.blogPlatform.III.blog.config.CacheConfig;
 import com.blogPlatform.III.blog.dto.request.UserRequest;
 import com.blogPlatform.III.blog.dto.response.PageResponse;
 import com.blogPlatform.III.blog.dto.response.UserResponse;
+import com.blogPlatform.III.blog.entity.AuthProvider;
 import com.blogPlatform.III.blog.entity.Role;
 import com.blogPlatform.III.blog.entity.RoleName;
 import com.blogPlatform.III.blog.entity.User;
@@ -11,6 +12,7 @@ import com.blogPlatform.III.blog.exception.DuplicateResourceException;
 import com.blogPlatform.III.blog.exception.ResourceNotFoundException;
 import com.blogPlatform.III.blog.repository.RoleRepository;
 import com.blogPlatform.III.blog.repository.UserRepository;
+import com.blogPlatform.III.blog.security.AuthUser;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -48,6 +50,14 @@ public class UserService {
         // every new account starts as a reader: nobody can sign up as an author or admin
         user.getRoles().add(findRole(RoleName.READER));
         return UserResponse.from(userRepository.save(user));
+    }
+
+    // After a Google login. A known email logs into that account (Google has verified the address, so it is
+    // the same person); an unknown one gets a new READER account without a password.
+    @Transactional
+    public AuthUser findOrCreateGoogleUser(String googleId, String email) {
+        User user = userRepository.findByEmail(email).orElseGet(() -> createGoogleUser(googleId, email));
+        return AuthUser.from(user);
     }
 
     public PageResponse<UserResponse> getAll(Pageable pageable) {
@@ -112,6 +122,32 @@ public class UserService {
     private User findUser(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User " + id + " not found"));
+    }
+
+    private User createGoogleUser(String googleId, String email) {
+        User user = new User();
+        user.setUsername(freeUsername(email));
+        user.setEmail(email);
+        user.setAuthProvider(AuthProvider.GOOGLE);
+        user.setProviderId(googleId);
+        user.getRoles().add(findRole(RoleName.READER));
+        return userRepository.save(user);
+    }
+
+    // maria.lopez@gmail.com -> "maria.lopez"; if taken -> "maria.lopez-2", "maria.lopez-3", ...
+    // (only the characters a username may have: letters, digits, . _ -)
+    private String freeUsername(String email) {
+        String base = email.substring(0, email.indexOf('@')).replaceAll("[^A-Za-z0-9._-]", "");
+        if (base.length() < 3) {
+            base = "user-" + base;
+        }
+        base = base.substring(0, Math.min(base.length(), 40));
+
+        String candidate = base;
+        for (int number = 2; userRepository.existsByUsername(candidate); number++) {
+            candidate = base + "-" + number;
+        }
+        return candidate;
     }
 
     private void copyRequestToUser(UserRequest request, User user) {

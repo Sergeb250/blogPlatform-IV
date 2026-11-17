@@ -22,7 +22,11 @@ public class AuthService {
         Authentication authentication = authenticationManager.authenticate(
                 UsernamePasswordAuthenticationToken.unauthenticated(request.username(), request.password()));
 
-        AuthUser user = (AuthUser) authentication.getPrincipal();
+        return issueToken((AuthUser) authentication.getPrincipal());
+    }
+
+    // the one place a token is made: after a password login and after a Google login
+    public TokenResponse issueToken(AuthUser user) {
         return TokenResponse.of(jwtService.issue(user), user);
     }
 }

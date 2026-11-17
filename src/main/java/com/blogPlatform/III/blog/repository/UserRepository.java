@@ -34,6 +34,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u WHERE u.username = :username AND u.deletedAt IS NULL")
     Optional<User> findByUsername(@Param("username") String username);
 
+    // Google login finds the account by its (verified) email; roles are needed right away for the token
+    @EntityGraph(attributePaths = "roles")
+    @Query("SELECT u FROM User u WHERE u.email = :email AND u.deletedAt IS NULL")
+    Optional<User> findByEmail(@Param("email") String email);
+
     @Query("SELECT COUNT(u) > 0 FROM User u WHERE u.username = :username AND u.deletedAt IS NULL")
     boolean existsByUsername(@Param("username") String username);
 
