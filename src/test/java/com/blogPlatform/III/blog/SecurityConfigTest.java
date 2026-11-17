@@ -75,7 +75,8 @@ class SecurityConfigTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.status").value(401))
-                .andExpect(jsonPath("$.message").value("Authentication required: please log in"))
+                .andExpect(jsonPath("$.message").value(
+                        "Authentication required: log in and send 'Authorization: Bearer <token>'"))
                 .andExpect(jsonPath("$.path").value("/api/posts"))
                 .andExpect(jsonPath("$.timestamp").exists())
                 // HTTP Basic is off: no "WWW-Authenticate: Basic" header, so no browser password pop-up

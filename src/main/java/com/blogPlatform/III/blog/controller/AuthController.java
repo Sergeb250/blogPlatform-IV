@@ -5,6 +5,7 @@ import com.blogPlatform.III.blog.dto.request.UserRequest;
 import com.blogPlatform.III.blog.dto.response.ApiResponse;
 import com.blogPlatform.III.blog.dto.response.TokenResponse;
 import com.blogPlatform.III.blog.dto.response.UserResponse;
+import com.blogPlatform.III.blog.security.AuthUser;
 import com.blogPlatform.III.blog.service.AuthService;
 import com.blogPlatform.III.blog.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Auth", description = "Sign up, log in (JWT) and the current user")
@@ -38,5 +40,13 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.ok("Logged in successfully", authService.login(request));
+    }
+
+    @Operation(summary = "Current user",
+            description = "The user of the token, read fresh from the database. "
+                    + "401: no token, or an expired, changed or malformed one.")
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<UserResponse>> me(@AuthenticationPrincipal AuthUser me) {
+        return ApiResponse.ok("Current user retrieved successfully", userService.getById(me.id()));
     }
 }

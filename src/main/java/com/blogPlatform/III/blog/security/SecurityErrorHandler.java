@@ -28,7 +28,13 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException exception) throws IOException {
-        write(request, response, HttpStatus.UNAUTHORIZED, "Authentication required: please log in");
+        write(request, response, HttpStatus.UNAUTHORIZED,
+                "Authentication required: log in and send 'Authorization: Bearer <token>'");
+    }
+
+    // 401 with the exact reason (expired, bad signature, ...), used by JwtAuthenticationFilter
+    public void rejectToken(HttpServletRequest request, HttpServletResponse response, String reason) throws IOException {
+        write(request, response, HttpStatus.UNAUTHORIZED, reason);
     }
 
     // 403: logged in, but the user's role is not allowed here

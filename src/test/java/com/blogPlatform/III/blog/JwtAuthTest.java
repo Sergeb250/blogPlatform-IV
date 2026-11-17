@@ -3,6 +3,7 @@ package com.blogPlatform.III.blog;
 import com.blogPlatform.III.blog.dto.request.UserRequest;
 import com.blogPlatform.III.blog.entity.RoleName;
 import com.blogPlatform.III.blog.security.AuthUser;
+import com.blogPlatform.III.blog.security.jwt.JwtProperties;
 import com.blogPlatform.III.blog.security.jwt.JwtService;
 import com.blogPlatform.III.blog.service.UserService;
 import com.jayway.jsonpath.JsonPath;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.cache.CacheManager;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -19,6 +21,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.EnumSet;
 import java.util.List;
@@ -26,6 +30,7 @@ import java.util.Set;
 
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -39,6 +44,7 @@ class JwtAuthTest {
     @Autowired MockMvc mockMvc;
     @Autowired UserService userService;
     @Autowired JwtService jwtService;
+    @Autowired JwtProperties jwtProperties;
     @Autowired CacheManager cacheManager;
 
     Long annaId;
@@ -129,6 +135,97 @@ class JwtAuthTest {
     }
 
     @Test
+    void me_withToken_returnsTheUserOfTheToken() throws Exception {
+        String token = loginAndGetToken("anna", "secret123");
+
+        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(annaId))
+                .andExpect(jsonPath("$.data.username").value("anna"))
+                .andExpect(jsonPath("$.data.roles[0]").value("READER"));
+    }
+
+    @Test
+    void me_withoutToken_is401() throws Exception {
+        mockMvc.perform(get("/api/auth/me"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value(
+                        "Authentication required: log in and send 'Authorization: Bearer <token>'"));
+    }
+
+    @Test
+    void token_opensProtectedEndpoints() throws Exception {
+        String token = loginAndGetToken("anna", "secret123");
+
+        mockMvc.perform(get("/api/stats")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/stats").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void expiredToken_is401() throws Exception {
+        // same secret, but the token's lifetime already ended 5 minutes ago
+        JwtService pastService = new JwtService(
+                new JwtProperties(jwtProperties.secret(), Duration.ofMinutes(-5), jwtProperties.issuer()));
+        String expired = pastService.issue(anna()).value();
+
+        expectRejected(expired, "Token has expired, please log in again");
+    }
+
+    @Test
+    void changedPayload_is401() throws Exception {
+        // a READER edits the payload by hand to become ADMIN, and keeps the old signature
+        String[] parts = loginAndGetToken("anna", "secret123").split("\\.");
+        String forgedPayload = encode(decode(parts[1]).replace("\"READER\"", "\"ADMIN\""));
+        String forged = parts[0] + "." + forgedPayload + "." + parts[2];
+
+        expectRejected(forged, "Token signature is not valid");
+    }
+
+    @Test
+    void tokenSignedWithAnotherSecret_is401() throws Exception {
+        byte[] otherKey = new byte[32];
+        new SecureRandom().nextBytes(otherKey);
+        JwtService attacker = new JwtService(new JwtProperties(
+                Base64.getEncoder().encodeToString(otherKey), Duration.ofHours(1), jwtProperties.issuer()));
+
+        expectRejected(attacker.issue(anna()).value(), "Token signature is not valid");
+    }
+
+    @Test
+    void unsignedToken_is401() throws Exception {
+        // the classic "alg: none" trick: no signature at all
+        String unsigned = encode("{\"alg\":\"none\"}") + "."
+                + encode("{\"sub\":\"anna\",\"uid\":" + annaId + ",\"roles\":[\"ADMIN\"],\"iss\":\"blog-platform\"}") + ".";
+
+        expectRejected(unsigned, "Unsigned tokens are not accepted");
+    }
+
+    @Test
+    void tokenFromAnotherIssuer_is401() throws Exception {
+        JwtService otherApp = new JwtService(
+                new JwtProperties(jwtProperties.secret(), Duration.ofHours(1), "another-app"));
+
+        expectRejected(otherApp.issue(anna()).value(), "Token is malformed or not valid");
+    }
+
+    @Test
+    void garbageToken_is401() throws Exception {
+        expectRejected("not-a-token", "Token is malformed or not valid");
+    }
+
+    @Test
+    void badToken_isRefused_evenOnAPublicEndpoint() throws Exception {
+        // a broken token is an error the client must fix, not a silent "continue as anonymous"
+        mockMvc.perform(get("/api/posts").header(HttpHeaders.AUTHORIZATION, "Bearer not-a-token"))
+                .andExpect(status().isUnauthorized());
+
+        // another scheme (not "Bearer ") is simply not ours: the request stays anonymous
+        mockMvc.perform(get("/api/posts").header(HttpHeaders.AUTHORIZATION, "Basic YW5uYTpzZWNyZXQ="))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void jwtService_keepsIdUsernameAndEveryRole() {
         AuthUser boss = new AuthUser(7L, "boss", "$2a$10$hash", EnumSet.of(RoleName.ADMIN, RoleName.AUTHOR));
 
@@ -152,7 +249,23 @@ class JwtAuthTest {
         return JsonPath.read(body, "$.data.accessToken");
     }
 
+    private void expectRejected(String token, String reason) throws Exception {
+        mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(reason))
+                .andExpect(jsonPath("$.path").value("/api/auth/me"));
+    }
+
+    private AuthUser anna() {
+        return new AuthUser(annaId, "anna", null, EnumSet.of(RoleName.READER));
+    }
+
     private static String decode(String base64Url) {
         return new String(Base64.getUrlDecoder().decode(base64Url), StandardCharsets.UTF_8);
+    }
+
+    private static String encode(String json) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(json.getBytes(StandardCharsets.UTF_8));
     }
 }
