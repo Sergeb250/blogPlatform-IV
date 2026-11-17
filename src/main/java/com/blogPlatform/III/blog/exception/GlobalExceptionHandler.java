@@ -1,6 +1,7 @@
 package com.blogPlatform.III.blog.exception;
 
 import com.blogPlatform.III.blog.dto.response.ApiResponse;
+import com.blogPlatform.III.blog.security.SecurityErrorHandler;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -8,6 +9,7 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -54,6 +56,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials(HttpServletRequest request) {
         return ApiResponse.error(HttpStatus.UNAUTHORIZED, "Invalid username or password", request.getRequestURI());
+    }
+
+    // a @PreAuthorize that says no. It is thrown inside the controller call, so this class sees it before
+    // Spring Security does, and without this method the catch-all below would answer 500
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDenied(HttpServletRequest request) {
+        return ApiResponse.error(HttpStatus.FORBIDDEN, SecurityErrorHandler.ACCESS_DENIED, request.getRequestURI());
     }
 
     @ExceptionHandler(OptimisticLockingFailureException.class)

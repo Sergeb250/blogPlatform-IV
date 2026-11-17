@@ -31,11 +31,11 @@ public class CommentService {
 
     @CacheEvict(cacheNames = CacheConfig.POPULAR_POSTS, allEntries = true)
     @Transactional
-    public CommentResponse add(Long postId, CommentRequest request) {
+    public CommentResponse add(Long postId, Long userId, CommentRequest request) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post " + postId + " not found"));
-        User user = userRepository.findById(request.userId())
-                .orElseThrow(() -> new ResourceNotFoundException("User " + request.userId() + " not found"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " not found"));
 
         Comment comment = new Comment();
         comment.setPost(post);

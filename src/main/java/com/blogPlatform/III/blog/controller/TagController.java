@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Tags", description = "Tags that label posts")
@@ -27,8 +28,10 @@ public class TagController {
 
     private final TagService tagService;
 
-    @Operation(summary = "Create a tag",
-            description = "The name is saved in lowercase. 400: invalid body. 409: tag already exists.")
+    @Operation(summary = "Create a tag (AUTHOR, ADMIN)",
+            description = "The name is saved in lowercase. 400: invalid body. 403: a READER can't create tags. "
+                    + "409: tag already exists.")
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     @PostMapping
     public ResponseEntity<ApiResponse<TagResponse>> create(@Valid @RequestBody TagRequest request) {
         return ApiResponse.created("Tag created successfully", tagService.create(request));
@@ -60,9 +63,10 @@ public class TagController {
         return ApiResponse.ok("Tag retrieved successfully", tagService.getById(id));
     }
 
-    @Operation(summary = "Delete a tag (soft delete)",
+    @Operation(summary = "Delete a tag (ADMIN; soft delete)",
             description = "The row is kept and marked with deleted_at; the tag no longer shows on any post. "
-                    + "The name can be used again. 404: not found or already deleted.")
+                    + "The name can be used again. 403: not an admin. 404: not found or already deleted.")
+    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable @Positive Long id) {
         tagService.delete(id);

@@ -14,12 +14,17 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificationExecutor<Post> {
 
     long countByStatus(PostStatus status);
 
     boolean existsByAuthorIdAndTitle(Long authorId, String title);
+
+    // only the id: the ownership check (security/Ownership) does not need the whole post
+    @Query("SELECT p.author.id FROM Post p WHERE p.id = :id")
+    Optional<Long> findAuthorIdById(@Param("id") Long id);
 
     // native SQL: @SQLRestriction is not added here, so "deleted_at IS NULL" is written by hand
     @Query(value = """

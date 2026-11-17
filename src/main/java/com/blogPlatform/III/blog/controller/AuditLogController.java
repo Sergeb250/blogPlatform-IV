@@ -13,6 +13,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,9 +26,10 @@ public class AuditLogController {
 
     private final AuditService auditService;
 
-    @Operation(summary = "List audit log entries",
+    @Operation(summary = "List audit log entries (ADMIN)",
             description = "Newest first, 20 per page (size 1-100). Sort fields: id, action, createdAt. Entries are written in their own "
-                    + "transaction (REQUIRES_NEW), so they stay even when the action was rolled back.")
+                    + "transaction (REQUIRES_NEW), so they stay even when the action was rolled back. 403: not an admin.")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<AuditLogResponse>>> getAll(
             @ParameterObject

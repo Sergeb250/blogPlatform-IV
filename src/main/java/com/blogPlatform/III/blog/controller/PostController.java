@@ -3,6 +3,7 @@ package com.blogPlatform.III.blog.controller;
 import com.blogPlatform.III.blog.dto.request.*;
 import com.blogPlatform.III.blog.dto.response.*;
 import com.blogPlatform.III.blog.exception.ContentRejectedException;
+import com.blogPlatform.III.blog.security.AuthUser;
 import com.blogPlatform.III.blog.service.PostService;
 import com.blogPlatform.III.blog.validation.ValidCursor;
 import com.blogPlatform.III.blog.validation.ValidPageable;
@@ -17,6 +18,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Posts", description = "Create, read, filter, search, update and delete blog posts")
@@ -27,14 +30,17 @@ public class PostController {
 
     private final PostService postService;
 
-    @Operation(summary = "Create a post",
-            description = "Missing tags are created (names are saved in lowercase). Status is DRAFT if not given. "
-                    + "400: invalid body or banned word in the content. 404: author not found. "
-                    + "409: the author already has a post with this title.")
+    @Operation(summary = "Create a post (AUTHOR, ADMIN)",
+            description = "The author is the logged-in user (from the token). "
+                    + "Missing tags are created (names are saved in lowercase). Status is DRAFT if not given. "
+                    + "400: invalid body or banned word in the content. 403: a READER can't write posts. "
+                    + "409: you already have a post with this title.")
+    @PreAuthorize("hasAnyRole('AUTHOR', 'ADMIN')")
     @PostMapping
-    public ResponseEntity<ApiResponse<PostResponse>> create(@Valid @RequestBody PostRequest request)
+    public ResponseEntity<ApiResponse<PostResponse>> create(@AuthenticationPrincipal AuthUser me,
+                                                            @Valid @RequestBody PostRequest request)
             throws ContentRejectedException {
-        return ApiResponse.created("Post created successfully", postService.create(request));
+        return ApiResponse.created("Post created successfully", postService.create(me.id(), request));
     }
 
     @Operation(summary = "List posts (filters + paging + sorting)",
@@ -115,10 +121,11 @@ public class PostController {
         return ApiResponse.ok("Post retrieved successfully", postService.getById(id));
     }
 
-    @Operation(summary = "Update a post",
+    @Operation(summary = "Update a post (its AUTHOR, ADMIN)",
             description = "Send the version you read (optimistic locking). Tags/status are kept if not sent. "
-                    + "400: invalid body, missing version or banned word. 404: not found. "
+                    + "400: invalid body, missing version or banned word. 403: not your post. 404: not found. "
                     + "409: someone changed the post since you read it (old version), or duplicate title.")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isPostAuthor(#id, authentication))")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<PostResponse>> update(@PathVariable @Positive Long id,
                                                             @Valid @RequestBody PostUpdateRequest request)
@@ -126,15 +133,19 @@ public class PostController {
         return ApiResponse.ok("Post updated successfully", postService.update(id, request));
     }
 
-    @Operation(summary = "Publish a post", description = "Sets status = PUBLISHED in one SQL UPDATE. 404: not found.")
+    @Operation(summary = "Publish a post (its AUTHOR, ADMIN)",
+            description = "Sets status = PUBLISHED in one SQL UPDATE. 403: not your post. 404: not found.")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isPostAuthor(#id, authentication))")
     @PatchMapping("/{id}/publish")
     public ResponseEntity<ApiResponse<PostResponse>> publish(@PathVariable @Positive Long id) {
         return ApiResponse.ok("Post published successfully", postService.publish(id));
     }
 
-    @Operation(summary = "Delete a post (soft delete)",
+    @Operation(summary = "Delete a post (its AUTHOR, ADMIN; soft delete)",
             description = "The row is kept and marked with deleted_at; the API never shows it again. Its comments and "
-                    + "reviews are soft-deleted too. The title can be used again. 404: not found or already deleted.")
+                    + "reviews are soft-deleted too. The title can be used again. 403: not your post. "
+                    + "404: not found or already deleted.")
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isPostAuthor(#id, authentication))")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(@PathVariable @Positive Long id) {
         postService.delete(id);

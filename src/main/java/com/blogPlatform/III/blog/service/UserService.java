@@ -17,9 +17,13 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -78,6 +82,21 @@ public class UserService {
         }
 
         copyRequestToUser(request, user);
+        return UserResponse.from(userRepository.save(user));
+    }
+
+    // replaces all roles of the user. The new roles reach the API with the user's NEXT token:
+    // a token already issued keeps the roles it was signed with until it expires
+    @CachePut(cacheNames = CacheConfig.USERS, key = "#id")
+    @Transactional
+    public UserResponse updateRoles(Long id, Set<RoleName> roles, Long actingUserId) {
+        User user = findUser(id);
+        // an admin who drops their own ADMIN role could leave the platform without any admin
+        if (id.equals(actingUserId) && !roles.contains(RoleName.ADMIN)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "You cannot remove the ADMIN role from your own account");
+        }
+        user.getRoles().clear();
+        user.getRoles().addAll(roleRepository.findByNameIn(roles));
         return UserResponse.from(userRepository.save(user));
     }
 

@@ -48,11 +48,11 @@ public class PostService {
             @CacheEvict(cacheNames = CacheConfig.TAGS, allEntries = true),
             @CacheEvict(cacheNames = CacheConfig.POPULAR_POSTS, allEntries = true)})
     @Transactional(rollbackFor = ContentRejectedException.class)
-    public PostResponse create(PostRequest request) throws ContentRejectedException {
-        auditService.record("CREATE_POST", null, "authorId=" + request.authorId() + ", title=" + request.title());
+    public PostResponse create(Long authorId, PostRequest request) throws ContentRejectedException {
+        auditService.record("CREATE_POST", null, "authorId=" + authorId + ", title=" + request.title());
 
-        User author = userRepository.findById(request.authorId())
-                .orElseThrow(() -> new ResourceNotFoundException("User " + request.authorId() + " not found"));
+        User author = userRepository.findById(authorId)
+                .orElseThrow(() -> new ResourceNotFoundException("User " + authorId + " not found"));
 
         if (postRepository.existsByAuthorIdAndTitle(author.getId(), request.title())) {
             throw new DuplicateResourceException("This author already has a post titled '" + request.title() + "'");

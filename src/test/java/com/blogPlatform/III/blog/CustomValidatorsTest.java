@@ -41,7 +41,7 @@ class CustomValidatorsTest {
 
     @Test
     void tagName_insideAList_reportsTheBadElement() {
-        PostRequest post = new PostRequest(1L, "Title", "Content", null, List.of("java", "<b>"));
+        PostRequest post = new PostRequest("Title", "Content", null, List.of("java", "<b>"));
 
         Map<String, String> errors = errors(post);
 

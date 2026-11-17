@@ -29,11 +29,11 @@ public class ReviewService {
 
     @CacheEvict(cacheNames = {CacheConfig.POPULAR_POSTS, CacheConfig.TOP_RATED_POSTS}, allEntries = true)
     @Transactional
-    public ReviewResponse add(Long postId, ReviewRequest request) {
+    public ReviewResponse add(Long postId, Long userId, ReviewRequest request) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post " + postId + " not found"));
-        User user = userRepository.findById(request.userId())
-                .orElseThrow(() -> new ResourceNotFoundException("User " + request.userId() + " not found"));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " not found"));
 
         if (reviewRepository.existsByPostIdAndUserId(postId, user.getId())) {
             throw new DuplicateResourceException("User " + user.getId() + " already reviewed post " + postId);

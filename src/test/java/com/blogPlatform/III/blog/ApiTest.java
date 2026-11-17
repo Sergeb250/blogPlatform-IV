@@ -18,6 +18,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 import static org.hamcrest.Matchers.allOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -30,7 +32,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-// these tests check API behavior (paging, validation, ...) as a logged-in user; who may call what is SecurityConfigTest
+// these tests check API behavior (paging, validation, ...) as a logged-in user who may call every endpoint
+// (AUTHOR + ADMIN); who may call what is SecurityConfigTest and RbacTest
 // "serge" is created in setUp(), so it is loaded (AppUserDetailsService) just before each test, not before setUp
 @WithUserDetails(value = "serge", setupBefore = TestExecutionEvent.TEST_EXECUTION)
 class ApiTest {
@@ -39,6 +42,7 @@ class ApiTest {
     @Autowired UserRepository userRepository;
     @Autowired PostRepository postRepository;
     @Autowired TagRepository tagRepository;
+    @Autowired RoleRepository roleRepository;
     @Autowired PasswordEncoder passwordEncoder;
 
     User serge;
@@ -58,6 +62,7 @@ class ApiTest {
         serge.setUsername("serge");
         serge.setEmail("serge@test.com");
         serge.setPasswordHash("hash");
+        serge.getRoles().addAll(roleRepository.findByNameIn(List.of(RoleName.AUTHOR, RoleName.ADMIN)));
         userRepository.save(serge);
 
         Tag java = new Tag();
@@ -141,9 +146,9 @@ class ApiTest {
         mockMvc.perform(post("/api/posts")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"authorId": %d, "title": "Second post", "content": "Text",
+                                {"title": "Second post", "content": "Text",
                                  "tags": ["Java", "Spring"]}
-                                """.formatted(serge.getId())))
+                                """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").value("Post created successfully"))
                 .andExpect(jsonPath("$.data.status").value("DRAFT"))
@@ -330,7 +335,7 @@ class ApiTest {
         for (int i = 1; i <= 3; i++) {
             mockMvc.perform(post("/api/posts/" + post.getId() + "/comments")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"userId\": %d, \"content\": \"Comment %d\"}".formatted(serge.getId(), i)))
+                            .content("{\"content\": \"Comment %d\"}".formatted(i)))
                     .andExpect(status().isCreated());
         }
 
@@ -383,8 +388,8 @@ class ApiTest {
         mockMvc.perform(post("/api/posts/" + post.getId() + "/comments")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"userId": %d, "content": "Nice!"}
-                                """.formatted(serge.getId())))
+                                {"content": "Nice!"}
+                                """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").value("Comment added successfully"))
                 .andExpect(jsonPath("$.data.username").value("serge"));
@@ -399,17 +404,17 @@ class ApiTest {
         String url = "/api/posts/" + post.getId() + "/reviews";
 
         mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userId\": %d, \"rating\": 6}".formatted(serge.getId())))
+                        .content("{\"rating\": 6}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.rating").exists());
 
         mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userId\": %d, \"rating\": 5}".formatted(serge.getId())))
+                        .content("{\"rating\": 5}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.message").value("Review added successfully"));
 
         mockMvc.perform(post(url).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userId\": %d, \"rating\": 4}".formatted(serge.getId())))
+                        .content("{\"rating\": 4}"))
                 .andExpect(status().isConflict());
     }
 
@@ -449,8 +454,8 @@ class ApiTest {
     void createPost_withBannedWord_returns400() throws Exception {
         mockMvc.perform(post("/api/posts").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"authorId": %d, "title": "Free money", "content": "Best casino in town"}
-                                """.formatted(serge.getId())))
+                                {"title": "Free money", "content": "Best casino in town"}
+                                """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Post rejected: it contains the banned word 'casino'"));
     }
@@ -459,8 +464,8 @@ class ApiTest {
     void createPost_withTooLongTag_returns400() throws Exception {
         mockMvc.perform(post("/api/posts").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"authorId": %d, "title": "Tags", "content": "Text", "tags": ["%s"]}
-                                """.formatted(serge.getId(), "x".repeat(60))))
+                                {"title": "Tags", "content": "Text", "tags": ["%s"]}
+                                """.formatted("x".repeat(60))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors['tags[0]']").exists());
     }
@@ -469,7 +474,7 @@ class ApiTest {
     void editComment_withOldVersion_returns409() throws Exception {
         String commentsUrl = "/api/posts/" + post.getId() + "/comments";
         String body = mockMvc.perform(post(commentsUrl).contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userId\": %d, \"content\": \"First text\"}".formatted(serge.getId())))
+                        .content("{\"content\": \"First text\"}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.version").value(0))
                 .andReturn().getResponse().getContentAsString();
@@ -612,18 +617,18 @@ class ApiTest {
 
     @Test
     void strictJson_textForNumber_returns400() throws Exception {
-        mockMvc.perform(post("/api/posts/" + post.getId() + "/comments").contentType(MediaType.APPLICATION_JSON)
+        mockMvc.perform(post("/api/posts/" + post.getId() + "/reviews").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"userId": "%d", "content": "Nice"}
-                                """.formatted(serge.getId())))
+                                {"rating": "5"}
+                                """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.userId").value("must be a whole number"));
+                .andExpect(jsonPath("$.errors.rating").value("must be a whole number"));
     }
 
     @Test
     void strictJson_decimalForWholeNumber_returns400() throws Exception {
         mockMvc.perform(post("/api/posts/" + post.getId() + "/reviews").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"userId\": %d, \"rating\": 4.5}".formatted(serge.getId())))
+                        .content("{\"rating\": 4.5}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.rating").value("must be a whole number"));
     }
@@ -632,8 +637,8 @@ class ApiTest {
     void strictJson_wrongEnumValue_returns400() throws Exception {
         mockMvc.perform(post("/api/posts").contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"authorId": %d, "title": "Enum test", "content": "Text", "status": "published"}
-                                """.formatted(serge.getId())))
+                                {"title": "Enum test", "content": "Text", "status": "published"}
+                                """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.status").value("must be one of [DRAFT, PUBLISHED]"));
     }
@@ -661,14 +666,13 @@ class ApiTest {
     void post_atMost10Tags_andValidTagNames() throws Exception {
         String elevenTags = "\"t1\",\"t2\",\"t3\",\"t4\",\"t5\",\"t6\",\"t7\",\"t8\",\"t9\",\"t10\",\"t11\"";
         mockMvc.perform(post("/api/posts").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"authorId\": %d, \"title\": \"Tags\", \"content\": \"Text\", \"tags\": [%s]}"
-                                .formatted(serge.getId(), elevenTags)))
+                        .content("{\"title\": \"Tags\", \"content\": \"Text\", \"tags\": [%s]}"
+                                .formatted(elevenTags)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.tags").value("a post can have at most 10 tags"));
 
         mockMvc.perform(post("/api/posts").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"authorId\": %d, \"title\": \"Tags\", \"content\": \"Text\", \"tags\": [\"<script>\"]}"
-                                .formatted(serge.getId())))
+                        .content("{\"title\": \"Tags\", \"content\": \"Text\", \"tags\": [\"<script>\"]}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors['tags[0]']").exists());
     }

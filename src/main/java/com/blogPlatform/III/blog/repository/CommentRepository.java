@@ -20,6 +20,9 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
     Optional<Comment> findByIdAndPostId(Long id, Long postId);
 
+    @Query("SELECT c.user.id FROM Comment c WHERE c.id = :id AND c.post.id = :postId")
+    Optional<Long> findUserIdByIdAndPostId(@Param("id") Long id, @Param("postId") Long postId);
+
     // soft delete of many rows in one statement. An UPDATE on purpose: a JPQL "DELETE FROM Comment"
     // would skip @SQLDelete and really remove the rows.
 

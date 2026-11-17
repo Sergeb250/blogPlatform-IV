@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,7 +24,9 @@ public class CacheStatsController {
 
     private final CacheManager cacheManager;
 
-    @Operation(summary = "Cache statistics", description = "Size, hits, misses, hit rate and evictions of every cache.")
+    @Operation(summary = "Cache statistics (ADMIN)",
+            description = "Size, hits, misses, hit rate and evictions of every cache. 403: not an admin.")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ResponseEntity<ApiResponse<List<CacheStatsResponse>>> getStats() {
         List<CacheStatsResponse> stats = cacheManager.getCacheNames().stream()

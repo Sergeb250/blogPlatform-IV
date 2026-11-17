@@ -157,7 +157,7 @@ class CacheTest {
         assertEquals(0L, before.get(0).reviewCount());
         assertTrue(postService.getTopRated(4.0, FIRST_10).content().isEmpty());
 
-        reviewService.add(post.getId(), new ReviewRequest(author.getId(), 5, "Great"));
+        reviewService.add(post.getId(), author.getId(), new ReviewRequest(5, "Great"));
 
         PopularPostResponse after = postService.getPopular(FIRST_10).content().get(0);
         assertEquals(1L, after.reviewCount());
@@ -172,7 +172,7 @@ class CacheTest {
         tagService.create(new TagRequest("spring"));
         assertEquals(2, tagService.getAll(TAGS_A_TO_Z).totalElements());
 
-        postService.create(new PostRequest(author.getId(), "Tagged post", "Text", null, List.of("docker")));
+        postService.create(author.getId(), new PostRequest("Tagged post", "Text", null, List.of("docker")));
         assertEquals(List.of("docker", "java", "spring"),
                 tagService.getAll(TAGS_A_TO_Z).content().stream().map(tag -> tag.name()).toList());
     }

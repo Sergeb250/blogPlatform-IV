@@ -22,6 +22,8 @@ import java.nio.charset.StandardCharsets;
 @RequiredArgsConstructor
 public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
 
+    public static final String ACCESS_DENIED = "You do not have permission to do this";
+
     private final ObjectMapper objectMapper;
 
     // 401: the endpoint needs a login and the request has none
@@ -41,7 +43,7 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException exception) throws IOException {
-        write(request, response, HttpStatus.FORBIDDEN, "You do not have permission to do this");
+        write(request, response, HttpStatus.FORBIDDEN, ACCESS_DENIED);
     }
 
     private void write(HttpServletRequest request, HttpServletResponse response,

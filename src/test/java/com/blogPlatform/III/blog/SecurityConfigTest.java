@@ -71,7 +71,7 @@ class SecurityConfigTest {
     @Test
     void writing_withoutLogin_is401_inTheApiShape() throws Exception {
         mockMvc.perform(post("/api/posts").contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"authorId\": 1, \"title\": \"Hello\", \"content\": \"Text\"}"))
+                        .content("{\"title\": \"Hello\", \"content\": \"Text\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.status").value(401))

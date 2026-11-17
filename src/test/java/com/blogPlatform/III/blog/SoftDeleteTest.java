@@ -58,7 +58,7 @@ class SoftDeleteTest {
         cleanDatabase();
         author = userService.register(new UserRequest("author", "author@test.com", "secret123"));
         reader = userService.register(new UserRequest("reader", "reader@test.com", "secret123"));
-        post = postService.create(new PostRequest(author.id(), "Soft delete explained",
+        post = postService.create(author.id(), new PostRequest("Soft delete explained",
                 "Deleted rows stay in the zebra table", PostStatus.PUBLISHED, List.of("java", "spring")));
     }
 
@@ -79,8 +79,8 @@ class SoftDeleteTest {
 
     @Test
     void deletePost_keepsTheRows_butEveryReadSkipsThem() {
-        CommentResponse comment = commentService.add(post.id(), new CommentRequest(reader.id(), "Nice"));
-        ReviewResponse review = reviewService.add(post.id(), new ReviewRequest(reader.id(), 5, null));
+        CommentResponse comment = commentService.add(post.id(), reader.id(), new CommentRequest("Nice"));
+        ReviewResponse review = reviewService.add(post.id(), reader.id(), new ReviewRequest(5, null));
         assertEquals(1, postService.searchByKeyword("zebra", FIRST_PAGE).totalElements());
 
         postService.delete(post.id());
@@ -136,13 +136,13 @@ class SoftDeleteTest {
 
     @Test
     void deleteUser_hidesTheAccount_butKeepsTheirPostsCommentsAndReviews() throws Exception {
-        PostResponse readersPost = postService.create(new PostRequest(reader.id(), "Reader's post", "Hello",
+        PostResponse readersPost = postService.create(reader.id(), new PostRequest("Reader's post", "Hello",
                 PostStatus.PUBLISHED, null));
-        CommentResponse onAuthorsPost = commentService.add(post.id(), new CommentRequest(reader.id(), "on author's post"));
-        ReviewResponse reviewOfAuthorsPost = reviewService.add(post.id(), new ReviewRequest(reader.id(), 4, null));
-        CommentResponse byAuthor = commentService.add(readersPost.id(), new CommentRequest(author.id(), "by the author"));
-        ReviewResponse reviewByAuthor = reviewService.add(readersPost.id(), new ReviewRequest(author.id(), 5, null));
-        CommentResponse readersOwn = commentService.add(readersPost.id(), new CommentRequest(reader.id(), "reader's own"));
+        CommentResponse onAuthorsPost = commentService.add(post.id(), reader.id(), new CommentRequest("on author's post"));
+        ReviewResponse reviewOfAuthorsPost = reviewService.add(post.id(), reader.id(), new ReviewRequest(4, null));
+        CommentResponse byAuthor = commentService.add(readersPost.id(), author.id(), new CommentRequest("by the author"));
+        ReviewResponse reviewByAuthor = reviewService.add(readersPost.id(), author.id(), new ReviewRequest(5, null));
+        CommentResponse readersOwn = commentService.add(readersPost.id(), reader.id(), new CommentRequest("reader's own"));
 
         userService.delete(author.id());
 
@@ -165,8 +165,8 @@ class SoftDeleteTest {
         assertEquals(1, reviewService.getByPost(readersPost.id(), FIRST_PAGE).totalElements());
 
         assertThrows(ResourceNotFoundException.class, () -> userService.getById(author.id()));
-        assertThrows(ResourceNotFoundException.class, () -> postService.create(
-                new PostRequest(author.id(), "After delete", "Nope", PostStatus.PUBLISHED, null)));
+        assertThrows(ResourceNotFoundException.class, () -> postService.create(author.id(),
+                new PostRequest("After delete", "Nope", PostStatus.PUBLISHED, null)));
         StatsResponse stats = statsService.getStats();
         assertEquals(1, stats.users());
         assertEquals(2, stats.posts());
@@ -195,10 +195,10 @@ class SoftDeleteTest {
 
     @Test
     void deletedReview_theSameUserCanReviewAgain_andItNoLongerCounts() {
-        ReviewResponse first = reviewService.add(post.id(), new ReviewRequest(reader.id(), 1, "meh"));
+        ReviewResponse first = reviewService.add(post.id(), reader.id(), new ReviewRequest(1, "meh"));
         reviewService.delete(post.id(), first.id());
 
-        ReviewResponse second = reviewService.add(post.id(), new ReviewRequest(reader.id(), 5, "changed my mind"));
+        ReviewResponse second = reviewService.add(post.id(), reader.id(), new ReviewRequest(5, "changed my mind"));
 
         assertTrue(isSoftDeleted("reviews", "review_id", first.id()));
         assertEquals(List.of(second.id()), reviewService.getByPost(post.id(), FIRST_PAGE).content().stream()
@@ -212,7 +212,7 @@ class SoftDeleteTest {
     void deletedPost_itsTitleCanBeUsedAgain() throws ContentRejectedException {
         postService.delete(post.id());
 
-        PostResponse again = postService.create(new PostRequest(author.id(), "Soft delete explained", "Second try",
+        PostResponse again = postService.create(author.id(), new PostRequest("Soft delete explained", "Second try",
                 null, null));
 
         assertNotEquals(post.id(), again.id());
@@ -241,7 +241,7 @@ class SoftDeleteTest {
 
     @Test
     void deleteComment_keepsTheRow_andTheCountDrops() {
-        CommentResponse comment = commentService.add(post.id(), new CommentRequest(reader.id(), "typo"));
+        CommentResponse comment = commentService.add(post.id(), reader.id(), new CommentRequest("typo"));
 
         commentService.delete(post.id(), comment.id());
 

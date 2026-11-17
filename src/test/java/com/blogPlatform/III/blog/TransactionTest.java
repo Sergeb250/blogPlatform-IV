@@ -74,10 +74,10 @@ class TransactionTest {
 
     @Test
     void createPost_failsHalfway_nothingIsSaved_butAuditStays() {
-        PostRequest request = new PostRequest(author.getId(), "Half saved?", "Some content", null,
+        PostRequest request = new PostRequest("Half saved?", "Some content", null,
                 List.of("brand-new-tag", "x".repeat(60)));
 
-        assertThrows(DataIntegrityViolationException.class, () -> postService.create(request));
+        assertThrows(DataIntegrityViolationException.class, () -> postService.create(author.getId(), request));
 
         assertEquals(0, postRepository.count());
         assertFalse(tagRepository.existsByName("brand-new-tag"));
@@ -86,10 +86,10 @@ class TransactionTest {
 
     @Test
     void createPost_checkedException_isRolledBack_thanksToRollbackFor() {
-        PostRequest request = new PostRequest(author.getId(), "Win money", "Visit my casino today", null,
+        PostRequest request = new PostRequest("Win money", "Visit my casino today", null,
                 List.of("money-tag"));
 
-        assertThrows(ContentRejectedException.class, () -> postService.create(request));
+        assertThrows(ContentRejectedException.class, () -> postService.create(author.getId(), request));
 
         assertEquals(0, postRepository.count());
         assertFalse(tagRepository.existsByName("money-tag"));
@@ -98,7 +98,7 @@ class TransactionTest {
 
     @Test
     void createPost_success_savesPostTagsAndAudit() throws Exception {
-        PostResponse created = postService.create(new PostRequest(author.getId(), "Good post", "Clean content",
+        PostResponse created = postService.create(author.getId(), new PostRequest("Good post", "Clean content",
                 PostStatus.PUBLISHED, List.of("java", "spring")));
 
         assertTrue(postRepository.existsById(created.id()));
