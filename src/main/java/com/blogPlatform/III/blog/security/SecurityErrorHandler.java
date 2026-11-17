@@ -46,6 +46,12 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
         write(request, response, HttpStatus.FORBIDDEN, ACCESS_DENIED);
     }
 
+    // 403 from the CSRF filter of the /csrf-demo chain: the form came without the hidden token, or with a wrong one
+    public void rejectCsrf(HttpServletRequest request, HttpServletResponse response,
+                           AccessDeniedException exception) throws IOException {
+        write(request, response, HttpStatus.FORBIDDEN, "Missing or invalid CSRF token");
+    }
+
     private void write(HttpServletRequest request, HttpServletResponse response,
                        HttpStatus status, String message) throws IOException {
         ApiResponse<Void> body = ApiResponse.error(status, message, request.getRequestURI()).getBody();

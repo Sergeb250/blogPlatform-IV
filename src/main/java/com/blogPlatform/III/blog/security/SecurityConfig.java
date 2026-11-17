@@ -5,8 +5,10 @@ import com.blogPlatform.III.blog.security.jwt.JwtService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -35,7 +37,24 @@ public class SecurityConfig {
     private final JwtService jwtService;
     private final CorsConfigurationSource corsConfigurationSource;
 
+    // A small HTML form app next to the API, to show CSRF protection where it matters: a browser session cookie.
+    // Checked first (@Order(1)); every request that is not /csrf-demo/** goes on to apiSecurity.
     @Bean
+    @Order(1)
+    public SecurityFilterChain csrfDemoSecurity(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher("/csrf-demo/**")
+                // a normal server session (JSESSIONID cookie), which the browser sends with every request on its own
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                // CSRF on (the default, written out on purpose): every POST must carry the token from the form
+                .csrf(Customizer.withDefaults())
+                .exceptionHandling(errors -> errors.accessDeniedHandler(errorHandler::rejectCsrf))
+                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain apiSecurity(HttpSecurity http) throws Exception {
         http
                 // allowed browser origins (CorsConfig); first in the chain, so a preflight never needs a token
