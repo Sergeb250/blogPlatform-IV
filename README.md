@@ -68,6 +68,7 @@ The credentials are read from environment variables, so no password is stored in
 | `ADMIN_USERNAME` | `admin` | – |
 | `ADMIN_EMAIL` | `admin@blog.local` | – |
 | `ADMIN_PASSWORD` | *(empty: no admin is created)* | `Admin-pass1` |
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:3000` | `http://localhost:3000,https://blog.example.com` |
 
 Sign-up only ever creates READERs. The first **ADMIN** account is created at startup from the three `ADMIN_*`
 variables, and only while no admin exists and `ADMIN_PASSWORD` has at least 8 characters. An existing account
@@ -143,7 +144,7 @@ Every endpoint answers with the same envelope:
 | 200 / 201 | OK / created (DELETE also answers 200 with a message) |
 | 400 | any validation failure (see below), banned word |
 | 401 | not logged in, or a bad token (see [Access rules](#access-rules-rbac)) |
-| 403 | logged in, but your role or ownership doesn't allow it |
+| 403 | logged in, but your role or ownership doesn't allow it; a browser origin that is not allowed (CORS); a form without its CSRF token |
 | 404 | id not found, unknown URL |
 | 405 | wrong HTTP method |
 | 409 | duplicate among live rows (username, email, tag, title, review), or **optimistic-lock conflict** |
@@ -202,6 +203,31 @@ The acting user always comes from the token: the bodies have no `authorId` / `us
 - Changing a post needs the AUTHOR role **and** being its author: a former author can't change old posts.
 - An admin can't remove ADMIN from their own account (409), so the platform always keeps an admin.
 - New roles reach the API with the user's **next login**: a token keeps the roles it was signed with.
+
+### CORS vs CSRF
+Two different browser problems, often confused:
+
+| | **CORS** (Cross-Origin Resource Sharing) | **CSRF** (Cross-Site Request Forgery) |
+|---|---|---|
+| What it is | a browser rule: may a page from origin A **read** the answer of origin B? | an attack: a foreign page makes your browser **send** a request with your cookie |
+| Who sets it | the server sends `Access-Control-Allow-*` headers, the browser enforces them | the attacker; the server must defend itself |
+| Protects | the answer (JavaScript of an unknown page can't read it) | the action (a forged request must not change anything) |
+| Needs | an allow-list of origins | a secret token in every form + `SameSite` cookies |
+| Applies to | browsers only (Postman and curl ignore it) | logins kept in **cookies** |
+
+**In this project**
+- **CORS on the API:** only the origins in `CORS_ALLOWED_ORIGINS` (default `http://localhost:3000`) may call it from a
+  browser; methods `GET POST PUT PATCH DELETE`, headers `Authorization` and `Content-Type`. A preflight (or request)
+  from any other origin, or for another method / header, gets **403**. The preflight needs no token.
+- **No CSRF token on the API:** the JWT travels in the `Authorization` header, which only our own JavaScript can set.
+  A foreign page can make the browser send cookies, but not this header, and the API has no login cookie. So CSRF has
+  nothing to abuse, and the API stays stateless (`csrf().disable()`, no session).
+- **CSRF on where there is a cookie:** a second filter chain for `/csrf-demo/**` uses a server session (`JSESSIONID`)
+  and Spring Security's CSRF filter. Open http://localhost:8080/csrf-demo: the form with the hidden `_csrf` token
+  saves a note; the same form without it gets **403 "Missing or invalid CSRF token"**. The session cookie is also
+  `HttpOnly` and `SameSite=Lax`.
+- **CORS does not stop CSRF:** a plain HTML form post is sent by the browser no matter what CORS says (CORS only hides
+  the answer). That's why the form needs its own token.
 
 ### Pagination and sorting
 ```

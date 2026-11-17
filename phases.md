@@ -12,7 +12,7 @@ Every phase is built from the user stories of the project brief. When a phase is
 | 2 | Security filter chain and access rules | 1.1 | Done | [phase-2](Docs/explained/phase-2-security-filter-chain.md) |
 | 3 | JWT authentication | 2.1, 2.2 | Done | [phase-3](Docs/explained/phase-3-jwt-authentication.md) |
 | 4 | Role-based access control (RBAC) | 4.2 | Done | [phase-4](Docs/explained/phase-4-rbac.md) |
-| 5 | CORS and CSRF | 1.2, 3.1, 3.2 | Planned | [phase-5](Docs/explained/phase-5-cors-csrf.md) |
+| 5 | CORS and CSRF | 1.2, 3.1, 3.2 | Done | [phase-5](Docs/explained/phase-5-cors-csrf.md) |
 | 6 | Google OAuth2 login | 4.1 | Planned | [phase-6](Docs/explained/phase-6-google-oauth2.md) |
 | 7 | DSA: token blacklist, sessions, hashing | 5.1 | Planned | [phase-7](Docs/explained/phase-7-dsa-tokens.md) |
 | 8 | Security event logging and monitoring | 5.2 | Planned | [phase-8](Docs/explained/phase-8-security-monitoring.md) |
@@ -98,11 +98,14 @@ Every phase is built from the user stories of the project brief. When a phase is
 **Story 1.2:** *safe cross-origin requests.* **Story 3.1:** *configure CSRF correctly.* **Story 3.2:** *document CORS vs CSRF.*
 
 **Tasks**
-- [ ] Global CORS configuration: allowed origins (from `app.cors.allowed-origins`), methods, headers
-- [ ] Unknown origins blocked with 403
-- [ ] CSRF off for the stateless JWT API (with the reason)
-- [ ] A second filter chain `/csrf-demo/**` with sessions and CSRF **on**: a form with a hidden CSRF token
-- [ ] README section "CORS vs CSRF"
+- [x] Global CORS configuration (`CorsConfig`): allowed origins from `app.cors.allowed-origins` (`CORS_ALLOWED_ORIGINS`),
+      methods `GET POST PUT PATCH DELETE`, headers `Authorization` + `Content-Type`, preflight cached 1 h, no credentials
+- [x] Unknown origins (and methods / headers that are not allowed) blocked with 403; a preflight needs no token
+- [x] CSRF off for the stateless JWT API (with the reason, in `SecurityConfig`)
+- [x] A second filter chain `/csrf-demo/**` (`@Order(1)`) with a session and CSRF **on**: a form with a hidden CSRF token
+      (`CsrfDemoController`); without the token, with a wrong one or another session's → JSON 403
+- [x] Session cookie `HttpOnly` + `SameSite=Lax`
+- [x] README section "CORS vs CSRF"
 
 **Done when:** the preflight from `http://localhost:3000` passes, one from `http://evil.example` gets 403,
 the demo form works with the token and fails without it.
