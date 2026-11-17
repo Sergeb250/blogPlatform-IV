@@ -10,7 +10,7 @@ Every phase is built from the user stories of the project brief. When a phase is
 |---|---|---|---|---|
 | 1 | Users, roles and BCrypt | Tech. requirements, 1.1 (passwords) | Done | [phase-1](Docs/explained/phase-1-users-roles-bcrypt.md) |
 | 2 | Security filter chain and access rules | 1.1 | Done | [phase-2](Docs/explained/phase-2-security-filter-chain.md) |
-| 3 | JWT authentication | 2.1, 2.2 | Planned | [phase-3](Docs/explained/phase-3-jwt-authentication.md) |
+| 3 | JWT authentication | 2.1, 2.2 | Done | [phase-3](Docs/explained/phase-3-jwt-authentication.md) |
 | 4 | Role-based access control (RBAC) | 4.2 | Planned | [phase-4](Docs/explained/phase-4-rbac.md) |
 | 5 | CORS and CSRF | 1.2, 3.1, 3.2 | Planned | [phase-5](Docs/explained/phase-5-cors-csrf.md) |
 | 6 | Google OAuth2 login | 4.1 | Planned | [phase-6](Docs/explained/phase-6-google-oauth2.md) |
@@ -62,12 +62,13 @@ Every phase is built from the user stories of the project brief. When a phase is
 **Story 2.1:** *log in and receive a JWT.* **Story 2.2:** *verify token structure and claims.*
 
 **Tasks**
-- [ ] Dependency `jjwt` 0.12.6 (`jjwt-api`, `jjwt-impl`, `jjwt-jackson`)
-- [ ] `POST /api/auth/register` (replaces the public `POST /api/users`), `POST /api/auth/login`, `GET /api/auth/me`
-- [ ] `JwtService`: HS256 signature, claims `sub`, `uid`, `roles`, `iat`, `exp`, `jti`, `iss`
-- [ ] `JwtAuthenticationFilter`: reads `Authorization: Bearer …`, verifies, sets the logged-in user
-- [ ] Expired, tampered, unsigned (`alg: none`) or malformed tokens → 401 with a clear message
-- [ ] Secret and lifetime from configuration (`JWT_SECRET`, `app.jwt.expiration`)
+- [x] Dependency `jjwt` 0.12.6 (`jjwt-api`, `jjwt-impl`, `jjwt-jackson`)
+- [x] `POST /api/auth/register` (replaces the public `POST /api/users`), `POST /api/auth/login`, `GET /api/auth/me`
+- [x] Sign-up always gives READER; a `role` field in the body is refused (400)
+- [x] `JwtService`: HS256 signature, claims `sub`, `uid`, `roles`, `iat`, `exp`, `jti`, `iss`
+- [x] `JwtAuthenticationFilter`: reads `Authorization: Bearer …`, verifies, sets the logged-in user
+- [x] Expired, tampered, unsigned (`alg: none`) or malformed tokens → 401 with a clear message
+- [x] Secret and lifetime from configuration (`JWT_SECRET`, `app.jwt.expiration`)
 
 **Done when:** login returns a token that decodes on jwt.io / in Postman, and a changed or expired token is refused.
 
