@@ -11,7 +11,7 @@ Every phase is built from the user stories of the project brief. When a phase is
 | 1 | Users, roles and BCrypt | Tech. requirements, 1.1 (passwords) | Done | [phase-1](Docs/explained/phase-1-users-roles-bcrypt.md) |
 | 2 | Security filter chain and access rules | 1.1 | Done | [phase-2](Docs/explained/phase-2-security-filter-chain.md) |
 | 3 | JWT authentication | 2.1, 2.2 | Done | [phase-3](Docs/explained/phase-3-jwt-authentication.md) |
-| 4 | Role-based access control (RBAC) | 4.2 | Planned | [phase-4](Docs/explained/phase-4-rbac.md) |
+| 4 | Role-based access control (RBAC) | 4.2 | Done | [phase-4](Docs/explained/phase-4-rbac.md) |
 | 5 | CORS and CSRF | 1.2, 3.1, 3.2 | Planned | [phase-5](Docs/explained/phase-5-cors-csrf.md) |
 | 6 | Google OAuth2 login | 4.1 | Planned | [phase-6](Docs/explained/phase-6-google-oauth2.md) |
 | 7 | DSA: token blacklist, sessions, hashing | 5.1 | Planned | [phase-7](Docs/explained/phase-7-dsa-tokens.md) |
@@ -79,12 +79,15 @@ Every phase is built from the user stories of the project brief. When a phase is
 **Story 4.2:** *restrict endpoints by role.*
 
 **Tasks**
-- [ ] `@EnableMethodSecurity` and `@PreAuthorize` on every protected endpoint
-- [ ] Ownership checks (`Ownership` bean): authors change only their own posts, users only their own comments / reviews
-- [ ] The acting user comes from the token: `authorId` / `userId` removed from request bodies
-- [ ] `PUT /api/users/{id}/roles` (ADMIN) to give or take roles
-- [ ] First admin account created at startup (`AdminAccountInitializer`)
-- [ ] Access matrix in the README
+- [x] `@EnableMethodSecurity` and `@PreAuthorize` on every protected endpoint; a refused `@PreAuthorize` is a JSON 403
+- [x] Ownership checks (`Ownership` bean): authors change only their own posts, users only their own comments / reviews;
+      ADMIN may change everything; a missing post / comment / review is 404 (not 403)
+- [x] The acting user comes from the token: `authorId` / `userId` removed from request bodies (sending one → 400)
+- [x] `PUT /api/users/{id}/roles` (ADMIN) to give or take roles; an admin can't remove their own ADMIN role (409)
+- [x] First admin account created at startup (`AdminAccountInitializer`, `ADMIN_USERNAME` / `ADMIN_EMAIL` /
+      `ADMIN_PASSWORD`); only while no admin exists, never by promoting an existing account
+- [x] Users see and change only their own account; the user list, audit logs and cache stats are ADMIN only
+- [x] Access matrix in the README
 
 **Done when:** READER → 403 on creating a post, AUTHOR → 403 on someone else's post, ADMIN → allowed.
 

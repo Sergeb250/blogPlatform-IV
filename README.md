@@ -65,6 +65,14 @@ The credentials are read from environment variables, so no password is stored in
 | `DB_URL` | `jdbc:mysql://localhost:3306/blog_db?createDatabaseIfNotExist=true` | – |
 | `DB_USERNAME` | `root` | `blog_user` |
 | `DB_PASSWORD` | *(empty)* | `your-password` |
+| `ADMIN_USERNAME` | `admin` | – |
+| `ADMIN_EMAIL` | `admin@blog.local` | – |
+| `ADMIN_PASSWORD` | *(empty: no admin is created)* | `Admin-pass1` |
+
+Sign-up only ever creates READERs. The first **ADMIN** account is created at startup from the three `ADMIN_*`
+variables, and only while no admin exists and `ADMIN_PASSWORD` has at least 8 characters. An existing account
+with that username or email is never turned into an admin. After that, an admin gives roles with
+`PUT /api/users/{id}/roles`.
 
 ```powershell
 # Windows PowerShell (current window)
@@ -134,6 +142,8 @@ Every endpoint answers with the same envelope:
 |---|---|
 | 200 / 201 | OK / created (DELETE also answers 200 with a message) |
 | 400 | any validation failure (see below), banned word |
+| 401 | not logged in, or a bad token (see [Access rules](#access-rules-rbac)) |
+| 403 | logged in, but your role or ownership doesn't allow it |
 | 404 | id not found, unknown URL |
 | 405 | wrong HTTP method |
 | 409 | duplicate among live rows (username, email, tag, title, review), or **optimistic-lock conflict** |
@@ -144,6 +154,7 @@ Every endpoint answers with the same envelope:
 |---|---|---|
 | POST / GET | `/api/users` | GET is paged |
 | GET / PUT / DELETE | `/api/users/{id}` | GET is cached |
+| PUT | `/api/users/{id}/roles` | ADMIN: `{"roles": ["AUTHOR", "READER"]}` |
 | GET | `/api/users/by-username/{username}` | |
 | POST / GET | `/api/posts` | GET: filters `status, author, tag, keyword, from, to` + `page, size, sort` |
 | GET / PUT / DELETE | `/api/posts/{id}` | GET is cached; PUT needs the `version` you read |
@@ -166,6 +177,31 @@ Every endpoint answers with the same envelope:
 | GET | `/api/cache-stats` | cache hits / misses |
 
 Every `DELETE` is a **soft delete**, see [Deleting (soft delete)](#deleting-soft-delete).
+
+### Access rules (RBAC)
+Log in with `POST /api/auth/login` and send the token as `Authorization: Bearer <token>`.
+The acting user always comes from the token: the bodies have no `authorId` / `userId` (sending one → 400).
+
+| Endpoint | Anonymous | READER | AUTHOR | ADMIN |
+|---|---|---|---|---|
+| `POST /api/auth/register`, `POST /api/auth/login` | ✅ | ✅ | ✅ | ✅ |
+| every `GET` on `/api/posts/**` and `/api/tags/**` (posts, comments, reviews, tags) | ✅ | ✅ | ✅ | ✅ |
+| `GET /api/auth/me`, `GET /api/stats` | 401 | ✅ | ✅ | ✅ |
+| `POST /api/posts` | 401 | 403 | ✅ | ✅ |
+| `PUT`, `PATCH …/publish`, `DELETE` on `/api/posts/{id}` | 401 | 403 | own posts | ✅ |
+| `POST` a comment or a review | 401 | ✅ | ✅ | ✅ |
+| `PUT` / `DELETE` a comment, `DELETE` a review | 401 | own | own | ✅ |
+| `POST /api/tags` | 401 | 403 | ✅ | ✅ |
+| `DELETE /api/tags/{id}` | 401 | 403 | 403 | ✅ |
+| `GET`, `PUT`, `DELETE` on `/api/users/{id}`, `GET /api/users/by-username/{username}` | 401 | own account | own account | ✅ |
+| `GET /api/users`, `PUT /api/users/{id}/roles` | 401 | 403 | 403 | ✅ |
+| `GET /api/audit-logs`, `GET /api/cache-stats`, `/api/admin/**` | 401 | 403 | 403 | ✅ |
+
+- **401**: no token, or an expired / changed / malformed one. **403**: logged in, but not allowed.
+- *own* = the caller wrote it (or is that user). A post or comment that doesn't exist is **404**, not 403.
+- Changing a post needs the AUTHOR role **and** being its author: a former author can't change old posts.
+- An admin can't remove ADMIN from their own account (409), so the platform always keeps an admin.
+- New roles reach the API with the user's **next login**: a token keeps the roles it was signed with.
 
 ### Pagination and sorting
 ```
