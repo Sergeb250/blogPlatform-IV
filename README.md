@@ -55,7 +55,7 @@ CREATE DATABASE blog_test;
 
 On the first start the app also creates:
 - the B-tree indexes declared with `@Index` on the entities
-- a FULLTEXT index on `posts(title, content)` (`config/FullTextIndexInitializer`)
+- a FULLTEXT index on `posts(title, content)` (`util/FullTextIndexInitializer`)
 
 ### 3.2 Environment variables
 The credentials are read from environment variables, so no password is stored in the code:
@@ -307,8 +307,7 @@ The results are written to `target/*.md`.
 ```
 src/main/java/com/blogPlatform/III/blog
 ├── aop/             PerformanceAspect: times every service / repository call
-├── config/          CacheConfig, OpenApiConfig, FullTextIndexInitializer, SoftDeleteSchemaInitializer,
-│                    MySqlFunctionContributor
+├── config/          CacheConfig, OpenApiConfig, PasswordConfig, SoftDeleteSchemaInitializer
 ├── controller/      REST endpoints (thin: validate, call the service, wrap in ApiResponse)
 ├── dto/request/     what clients send (records + Bean Validation)
 ├── dto/response/    what the API returns (records, ApiResponse, PageResponse, ...)
@@ -318,7 +317,7 @@ src/main/java/com/blogPlatform/III/blog
 ├── seed/            DataSeeder (profile "seed")
 ├── service/         business rules, @Transactional, @Cacheable
 ├── specification/   JPA Specifications for the post filters
-├── util/            PasswordUtil (BCrypt password hashing)
+├── util/            FullTextIndexInitializer (creates the FULLTEXT index), MySqlFunctionContributor (match_against)
 └── validation/      custom constraints, each = annotation + validator class:
                      @ValidPageable (page size + sort whitelist), @ValidCursor, @Username, @TagName
 ```
