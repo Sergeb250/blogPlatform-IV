@@ -9,7 +9,7 @@ Every phase is built from the user stories of the project brief. When a phase is
 | # | Phase | User stories | Status | Explanation |
 |---|---|---|---|---|
 | 1 | Users, roles and BCrypt | Tech. requirements, 1.1 (passwords) | Done | [phase-1](Docs/explained/phase-1-users-roles-bcrypt.md) |
-| 2 | Security filter chain and access rules | 1.1 | Planned | [phase-2](Docs/explained/phase-2-security-filter-chain.md) |
+| 2 | Security filter chain and access rules | 1.1 | Done | [phase-2](Docs/explained/phase-2-security-filter-chain.md) |
 | 3 | JWT authentication | 2.1, 2.2 | Planned | [phase-3](Docs/explained/phase-3-jwt-authentication.md) |
 | 4 | Role-based access control (RBAC) | 4.2 | Planned | [phase-4](Docs/explained/phase-4-rbac.md) |
 | 5 | CORS and CSRF | 1.2, 3.1, 3.2 | Planned | [phase-5](Docs/explained/phase-5-cors-csrf.md) |
@@ -45,13 +45,13 @@ Every phase is built from the user stories of the project brief. When a phase is
 **Story 1.1:** *configure Spring Security filters to protect all endpoints and define which resources need a login.*
 
 **Tasks**
-- [ ] Dependency `spring-boot-starter-security` (+ `spring-boot-starter-security-test`)
-- [ ] `SecurityConfig` with a custom `SecurityFilterChain`
-- [ ] Public: register, login, Google login, Swagger, all `GET` on posts and tags (and their comments / reviews)
-- [ ] Everything else needs a login; `/api/admin/**` needs `ADMIN`
-- [ ] Stateless sessions, no HTTP Basic, no form login
-- [ ] `AppUserDetailsService` + `AuthenticationManager` (DAO provider + BCrypt)
-- [ ] 401 / 403 answered in the API's normal JSON shape (`SecurityErrorHandler`)
+- [x] Dependency `spring-boot-starter-security` (+ `spring-boot-starter-security-test`)
+- [x] `SecurityConfig` with a custom `SecurityFilterChain`
+- [x] Public: sign-up (`POST /api/users`), Swagger, all `GET` on posts and tags (and their comments / reviews); the login and Google paths are added in Phases 3 and 6
+- [x] Everything else needs a login; `/api/admin/**` needs `ADMIN`
+- [x] Stateless sessions, no HTTP Basic, no form login
+- [x] `AppUserDetailsService` + `AuthenticationManager` (DAO provider + BCrypt)
+- [x] 401 / 403 answered in the API's normal JSON shape (`SecurityErrorHandler`)
 
 **Done when:** an anonymous call to a protected endpoint gets a JSON 401, a public `GET` still works.
 
@@ -63,7 +63,7 @@ Every phase is built from the user stories of the project brief. When a phase is
 
 **Tasks**
 - [ ] Dependency `jjwt` 0.12.6 (`jjwt-api`, `jjwt-impl`, `jjwt-jackson`)
-- [ ] `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
+- [ ] `POST /api/auth/register` (replaces the public `POST /api/users`), `POST /api/auth/login`, `GET /api/auth/me`
 - [ ] `JwtService`: HS256 signature, claims `sub`, `uid`, `roles`, `iat`, `exp`, `jti`, `iss`
 - [ ] `JwtAuthenticationFilter`: reads `Authorization: Bearer …`, verifies, sets the logged-in user
 - [ ] Expired, tampered, unsigned (`alg: none`) or malformed tokens → 401 with a clear message
