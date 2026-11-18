@@ -8,7 +8,7 @@ import com.blogPlatform.III.blog.repository.RoleRepository;
 import com.blogPlatform.III.blog.repository.TagRepository;
 import com.blogPlatform.III.blog.repository.UserRepository;
 import com.blogPlatform.III.blog.security.AuthUser;
-import com.blogPlatform.III.blog.security.jwt.JwtService;
+import com.blogPlatform.III.blog.service.AuthService;
 import com.blogPlatform.III.blog.service.CommentService;
 import com.blogPlatform.III.blog.service.ReviewService;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +46,7 @@ class RbacTest {
             """;
 
     @Autowired MockMvc mockMvc;
-    @Autowired JwtService jwtService;
+    @Autowired AuthService authService;
     @Autowired UserRepository userRepository;
     @Autowired RoleRepository roleRepository;
     @Autowired PostRepository postRepository;
@@ -242,10 +242,11 @@ class RbacTest {
         String newPost = """
                 {"title": "Now I am an author", "content": "Text"}
                 """;
-        // the old token was signed with READER only
+        // the old token was signed with READER only, so the role change revoked it
         mockMvc.perform(post("/api/posts").header(HttpHeaders.AUTHORIZATION, oldToken)
                         .contentType(MediaType.APPLICATION_JSON).content(newPost))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Token has been revoked, please log in again"));
         as(userRepository.findById(reader.getId()).orElseThrow(), post("/api/posts"), newPost)
                 .andExpect(status().isCreated());
     }
@@ -283,7 +284,8 @@ class RbacTest {
     }
 
     private String bearer(User user) {
-        return "Bearer " + jwtService.issue(AuthUser.from(user)).value();
+        // through AuthService, like a real login: the token is registered, so a role change can revoke it
+        return "Bearer " + authService.issueToken(AuthUser.from(user), "127.0.0.1").accessToken();
     }
 
     private User user(String username, RoleName role) {

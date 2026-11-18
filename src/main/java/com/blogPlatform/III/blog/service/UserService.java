@@ -13,6 +13,7 @@ import com.blogPlatform.III.blog.exception.ResourceNotFoundException;
 import com.blogPlatform.III.blog.repository.RoleRepository;
 import com.blogPlatform.III.blog.repository.UserRepository;
 import com.blogPlatform.III.blog.security.AuthUser;
+import com.blogPlatform.III.blog.security.token.ActiveSessionRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
@@ -35,6 +36,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ActiveSessionRegistry sessions;
 
     @Transactional
     public UserResponse register(UserRequest request) {
@@ -92,11 +94,14 @@ public class UserService {
         }
 
         copyRequestToUser(request, user);
-        return UserResponse.from(userRepository.save(user));
+        UserResponse updated = UserResponse.from(userRepository.save(user));
+        // the password (and maybe the username) changed: every device must log in again with the new data
+        sessions.revokeAll(id);
+        return updated;
     }
 
-    // replaces all roles of the user. The new roles reach the API with the user's NEXT token:
-    // a token already issued keeps the roles it was signed with until it expires
+    // replaces all roles of the user. A token is signed with the roles it was made with, so the user's tokens
+    // are revoked: the next login gives a token with the new roles
     @CachePut(cacheNames = CacheConfig.USERS, key = "#id")
     @Transactional
     public UserResponse updateRoles(Long id, Set<RoleName> roles, Long actingUserId) {
@@ -107,7 +112,9 @@ public class UserService {
         }
         user.getRoles().clear();
         user.getRoles().addAll(roleRepository.findByNameIn(roles));
-        return UserResponse.from(userRepository.save(user));
+        UserResponse updated = UserResponse.from(userRepository.save(user));
+        sessions.revokeAll(id);
+        return updated;
     }
 
     @CacheEvict(cacheNames = CacheConfig.USERS, key = "#id")
@@ -117,6 +124,8 @@ public class UserService {
         // only this row: posts, comments and reviews keep their FKs and stay live.
         // @SQLDelete on User: UPDATE users SET deleted_at = NOW(6) WHERE user_id = ?
         userRepository.delete(user);
+        // a deleted account's tokens would otherwise keep working until they expire
+        sessions.revokeAll(id);
     }
 
     private User findUser(Long id) {
