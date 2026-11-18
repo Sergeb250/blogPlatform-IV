@@ -15,7 +15,7 @@ Every phase is built from the user stories of the project brief. When a phase is
 | 5 | CORS and CSRF | 1.2, 3.1, 3.2 | Done | [phase-5](Docs/explained/phase-5-cors-csrf.md) |
 | 6 | Google OAuth2 login | 4.1 | Done | [phase-6](Docs/explained/phase-6-google-oauth2.md) |
 | 7 | DSA: token blacklist, sessions, hashing | 5.1 | Done | [phase-7](Docs/explained/phase-7-dsa-tokens.md) |
-| 8 | Security event logging and monitoring | 5.2 | Planned | [phase-8](Docs/explained/phase-8-security-monitoring.md) |
+| 8 | Security event logging and monitoring | 5.2 | Done | [phase-8](Docs/explained/phase-8-security-monitoring.md) |
 | 9 | OpenAPI, Postman, README, tests | Deliverables | Planned | [phase-9](Docs/explained/phase-9-docs-and-testing.md) |
 
 ---
@@ -102,9 +102,9 @@ Every phase is built from the user stories of the project brief. When a phase is
       methods `GET POST PUT PATCH DELETE`, headers `Authorization` + `Content-Type`, preflight cached 1 h, no credentials
 - [x] Unknown origins (and methods / headers that are not allowed) blocked with 403; a preflight needs no token
 - [x] CSRF off for the stateless JWT API (with the reason, in `SecurityConfig`)
-- [x] A second filter chain `/csrf-demo/**` (`@Order(1)`) with a session and CSRF **on**: a form with a hidden CSRF token
-      (`CsrfDemoController`); without the token, with a wrong one or another session's → JSON 403
-- [x] Session cookie `HttpOnly` + `SameSite=Lax`
+- [x] ~~A second filter chain `/csrf-demo/**` with a session and CSRF on~~: removed on request (one API chain only);
+      the CSRF token mechanism for cookie-based apps is explained in the README instead
+- [x] Session cookie `HttpOnly` + `SameSite=Lax` (the Google login round trip is the only session)
 - [x] README section "CORS vs CSRF"
 
 **Done when:** the preflight from `http://localhost:3000` passes, one from `http://evil.example` gets 403,
@@ -147,11 +147,11 @@ the demo form works with the token and fails without it.
 **Story 5.2:** *monitor login attempts and access patterns to find suspicious activity.*
 
 **Tasks**
-- [ ] `SECURITY` logger → `logs/security.log` (one `key=value` line per event)
-- [ ] Events: login success / failure / blocked, token rejected, 401, 403, logout, tokens revoked
-- [ ] `LoginAttemptService`: sliding window per `username|ip`, 5 failures in 15 min → 429 + `Retry-After`
-- [ ] `SecurityMonitor`: counters per user, IP and endpoint; top-k with a min-heap
-- [ ] `GET /api/admin/security/report`: token usage, access frequency, suspected brute force
+- [x] `SECURITY` logger → `logs/security.log` (one `key=value` line per event)
+- [x] Events: login success / failure / blocked, token rejected, 401, 403, logout, tokens revoked
+- [x] `LoginAttemptService`: sliding window per `username|ip`, 5 failures in 15 min → 429 + `Retry-After`
+- [x] `SecurityMonitor`: counters per user, IP and endpoint; top-k with a min-heap
+- [x] `GET /api/admin/security/report`: token usage, access frequency, suspected brute force
 
 **Done when:** six wrong passwords in a row get 429, and the report names that user and IP.
 
