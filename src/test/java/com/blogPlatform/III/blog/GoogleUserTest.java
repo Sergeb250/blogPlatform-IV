@@ -93,14 +93,14 @@ class GoogleUserTest {
         userService.findOrCreateGoogleUser("google-123", "maria.lopez@gmail.com");
 
         assertThrows(BadCredentialsException.class,
-                () -> authService.login(new LoginRequest("maria.lopez", "anything123")));
+                () -> authService.login(new LoginRequest("maria.lopez", "anything123"), "127.0.0.1"));
     }
 
     @Test
     void googleUser_getsOurOwnToken() {
         AuthUser maria = userService.findOrCreateGoogleUser("google-123", "maria.lopez@gmail.com");
 
-        var token = authService.issueToken(maria);
+        var token = authService.issueToken(maria, "127.0.0.1");
 
         assertEquals("Bearer", token.tokenType());
         assertEquals("maria.lopez", token.username());

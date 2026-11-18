@@ -50,7 +50,7 @@ public class GoogleLoginHandler implements AuthenticationSuccessHandler, Authent
 
         // getName() is Google's "sub": a stable id for the person, even if the Gmail address changes
         AuthUser user = userService.findOrCreateGoogleUser(google.getName(), email);
-        TokenResponse token = authService.issueToken(user);
+        TokenResponse token = authService.issueToken(user, request.getRemoteAddr());
 
         // the session only carried the OAuth2 "state" during the trip to Google; from now on the JWT is the proof
         HttpSession session = request.getSession(false);

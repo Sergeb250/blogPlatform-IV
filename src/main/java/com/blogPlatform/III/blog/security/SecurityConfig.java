@@ -3,6 +3,8 @@ package com.blogPlatform.III.blog.security;
 import com.blogPlatform.III.blog.security.jwt.JwtAuthenticationFilter;
 import com.blogPlatform.III.blog.security.jwt.JwtService;
 import com.blogPlatform.III.blog.security.oauth2.GoogleLoginHandler;
+import com.blogPlatform.III.blog.security.token.ActiveSessionRegistry;
+import com.blogPlatform.III.blog.security.token.TokenBlacklist;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
@@ -38,6 +40,8 @@ public class SecurityConfig {
 
     private final SecurityErrorHandler errorHandler;
     private final JwtService jwtService;
+    private final TokenBlacklist tokenBlacklist;
+    private final ActiveSessionRegistry sessions;
     private final CorsConfigurationSource corsConfigurationSource;
 
     // A small HTML form app next to the API, to show CSRF protection where it matters: a browser session cookie.
@@ -91,7 +95,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 // the token is read before the access rules run, so the rules already know who is calling
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService, errorHandler),
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService, errorHandler, tokenBlacklist, sessions),
                         UsernamePasswordAuthenticationFilter.class);
 
         // Google login only when a Google client is configured (profile "google"), so the app also starts

@@ -6,14 +6,17 @@ import com.blogPlatform.III.blog.dto.response.ApiResponse;
 import com.blogPlatform.III.blog.dto.response.TokenResponse;
 import com.blogPlatform.III.blog.dto.response.UserResponse;
 import com.blogPlatform.III.blog.security.AuthUser;
+import com.blogPlatform.III.blog.security.token.TokenDetails;
 import com.blogPlatform.III.blog.service.AuthService;
 import com.blogPlatform.III.blog.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -39,8 +42,22 @@ public class AuthController {
             description = "Returns a JWT signed with HMAC-SHA256. Send it on every other request as "
                     + "'Authorization: Bearer <accessToken>'. 401: wrong username or password.")
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request) {
-        return ApiResponse.ok("Logged in successfully", authService.login(request));
+    public ResponseEntity<ApiResponse<TokenResponse>> login(@Valid @RequestBody LoginRequest request,
+                                                            HttpServletRequest httpRequest) {
+        return ApiResponse.ok("Logged in successfully", authService.login(request, httpRequest.getRemoteAddr()));
+    }
+
+    @Operation(summary = "Log out",
+            description = "Revokes the token of this request: from now on it gets 401 \"revoked\", even before it "
+                    + "expires. Other tokens of the same user (other devices) keep working. 401: no valid token.")
+    @PreAuthorize("isAuthenticated()")
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<Void>> logout(Authentication authentication) {
+        // the JWT filter put the token's id there; a request authenticated another way has nothing to revoke
+        if (authentication.getDetails() instanceof TokenDetails token) {
+            authService.logout(token);
+        }
+        return ApiResponse.ok("Logged out successfully", null);
     }
 
     @Operation(summary = "Current user",

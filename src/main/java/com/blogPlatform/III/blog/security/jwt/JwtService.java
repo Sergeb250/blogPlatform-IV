@@ -36,10 +36,11 @@ public class JwtService {
         // JWT times are whole seconds; cutting here keeps expiresAt equal to the "exp" claim
         Instant issuedAt = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         Instant expiresAt = issuedAt.plus(properties.expiration());
+        // jti: a unique id per token, so one token can be revoked without touching the others
+        String id = UUID.randomUUID().toString();
 
         String token = Jwts.builder()
-                // jti: a unique id per token, so one token can be revoked without touching the others
-                .id(UUID.randomUUID().toString())
+                .id(id)
                 .issuer(properties.issuer())
                 .subject(user.username())
                 .claim(USER_ID, user.id())
@@ -48,7 +49,7 @@ public class JwtService {
                 .expiration(Date.from(expiresAt))
                 .signWith(key, Jwts.SIG.HS256)
                 .compact();
-        return new IssuedToken(token, issuedAt, expiresAt);
+        return new IssuedToken(token, id, issuedAt, expiresAt);
     }
 
     // checks the signature, the expiry and the issuer; throws a JwtException subclass if any of them is wrong

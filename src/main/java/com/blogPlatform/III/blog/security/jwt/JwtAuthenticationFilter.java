@@ -2,6 +2,10 @@ package com.blogPlatform.III.blog.security.jwt;
 
 import com.blogPlatform.III.blog.security.AuthUser;
 import com.blogPlatform.III.blog.security.SecurityErrorHandler;
+import com.blogPlatform.III.blog.security.token.ActiveSessionRegistry;
+import com.blogPlatform.III.blog.security.token.TokenBlacklist;
+import com.blogPlatform.III.blog.security.token.TokenDetails;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.UnsupportedJwtException;
@@ -29,6 +33,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final SecurityErrorHandler errorHandler;
+    private final TokenBlacklist blacklist;
+    private final ActiveSessionRegistry sessions;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -40,9 +46,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        Claims claims;
         AuthUser user;
         try {
-            user = jwtService.toAuthUser(jwtService.verify(header.substring(BEARER.length())));
+            claims = jwtService.verify(header.substring(BEARER.length()));
+            user = jwtService.toAuthUser(claims);
         } catch (ExpiredJwtException e) {
             errorHandler.unauthorized(request, response, "Token has expired, please log in again");
             return;
@@ -57,9 +65,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
+        // signed by us and not expired, but maybe logged out, or its user's roles / password changed since
+        if (blacklist.isRevoked(claims.getId())) {
+            errorHandler.unauthorized(request, response, "Token has been revoked, please log in again");
+            return;
+        }
+        sessions.recordRequest(claims, request.getRemoteAddr());
+
+        UsernamePasswordAuthenticationToken authentication =
+                UsernamePasswordAuthenticationToken.authenticated(user, null, user.getAuthorities());
+        authentication.setDetails(new TokenDetails(claims.getId(), claims.getExpiration().toInstant()));
+
         // a fresh context for this request only; nothing is kept after it (STATELESS)
         SecurityContext context = SecurityContextHolder.createEmptyContext();
-        context.setAuthentication(UsernamePasswordAuthenticationToken.authenticated(user, null, user.getAuthorities()));
+        context.setAuthentication(authentication);
         SecurityContextHolder.setContext(context);
 
         chain.doFilter(request, response);
