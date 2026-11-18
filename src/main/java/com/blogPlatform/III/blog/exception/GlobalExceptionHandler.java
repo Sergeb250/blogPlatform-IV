@@ -78,7 +78,7 @@ public class GlobalExceptionHandler {
     // Spring Security does, and without this method the catch-all below would answer 500
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(HttpServletRequest request) {
-        monitor.forbidden(request, "ROLE");
+        monitor.forbidden(request);
         return ApiResponse.error(HttpStatus.FORBIDDEN, SecurityErrorHandler.ACCESS_DENIED, request.getRequestURI());
     }
 

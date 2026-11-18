@@ -84,8 +84,8 @@ class SecurityEventsTest {
                 .andExpect(status().isForbidden());
         mockMvc.perform(get("/api/stats")).andExpect(status().isUnauthorized());
 
-        assertLogged("ACCESS_DENIED user=ev_reader ip=127.0.0.1 method=GET path=/api/admin/security/report reason=ROLE");
-        assertLogged("ACCESS_DENIED user=ev_reader ip=127.0.0.1 method=GET path=/api/audit-logs reason=ROLE");
+        assertLogged("ACCESS_DENIED user=ev_reader ip=127.0.0.1 method=GET path=/api/admin/security/report");
+        assertLogged("ACCESS_DENIED user=ev_reader ip=127.0.0.1 method=GET path=/api/audit-logs");
         assertLogged("ACCESS_UNAUTHENTICATED ip=127.0.0.1 method=GET path=/api/stats");
     }
 

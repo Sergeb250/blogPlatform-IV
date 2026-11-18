@@ -88,11 +88,11 @@ public class SecurityMonitor {
                 request.getRemoteAddr(), request.getMethod(), clean(request.getRequestURI()));
     }
 
-    // reason: ROLE (role or ownership rule said no) or CSRF (form without a valid token)
-    public void forbidden(HttpServletRequest request, String reason) {
+    // logged in, but a role or ownership rule said no
+    public void forbidden(HttpServletRequest request) {
         forbiddenRequests.incrementAndGet();
-        log.warn("ACCESS_DENIED user={} ip={} method={} path={} reason={}", currentUsername(),
-                request.getRemoteAddr(), request.getMethod(), clean(request.getRequestURI()), reason);
+        log.warn("ACCESS_DENIED user={} ip={} method={} path={}", currentUsername(),
+                request.getRemoteAddr(), request.getMethod(), clean(request.getRequestURI()));
     }
 
     public void logout(String username) {

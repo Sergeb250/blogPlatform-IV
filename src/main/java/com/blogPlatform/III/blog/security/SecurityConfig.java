@@ -11,10 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -31,50 +29,35 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
+// turns on @PreAuthorize: the URL rules below only split public / logged in / admin, roles are checked per endpoint
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
+    // anyone may read the blog (posts, tags, and the comments / reviews under a post); changing it needs a login
     private static final String[] PUBLIC_READS = {"/api/posts/**", "/api/tags/**"};
     private static final String[] API_DOCS = {"/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"};
+    // the start of a Google login, and Google's way back with the one-time code
+    private static final String[] GOOGLE_LOGIN = {"/oauth2/**", "/login/oauth2/**"};
 
     private final SecurityErrorHandler errorHandler;
+    private final CorsConfigurationSource corsConfigurationSource;
     private final JwtService jwtService;
     private final TokenBlacklist tokenBlacklist;
     private final ActiveSessionRegistry sessions;
     private final SecurityMonitor monitor;
-    private final CorsConfigurationSource corsConfigurationSource;
 
-
+    // GoogleLoginHandler is a parameter, not a field: it needs the AuthenticationManager made below, so as a field
+    // it would be a circular reference
     @Bean
-    @Order(1)
-    public SecurityFilterChain csrfDemoSecurity(HttpSecurity http) throws Exception {
-        http
-                .securityMatcher("/csrf-demo/**")
-                // a normal server session (JSESSIONID cookie), which the browser sends with every request on its own
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
-                // CSRF on (the default, written out on purpose): every POST must carry the token from the form
-                .csrf(Customizer.withDefaults())
-                .exceptionHandling(errors -> errors.accessDeniedHandler(errorHandler::rejectCsrf))
-                .authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
-        return http.build();
-    }
-
-    @Bean
-    @Order(2)
-    // GoogleLoginHandler is a parameter, not a field: it needs AuthService -> AuthenticationManager, which is
-    // made in this class, so it can only be built once this class exists (a field would be a circular reference)
     public SecurityFilterChain apiSecurity(HttpSecurity http,
                                            ObjectProvider<ClientRegistrationRepository> googleClient,
                                            GoogleLoginHandler googleLoginHandler) throws Exception {
         http
-                // allowed browser origins (CorsConfig); first in the chain, so a preflight never needs a token
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 // no server session: every request proves by itself who sends it (its JWT)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // CSRF tricks the browser into sending a cookie it attaches on its own. This API has no login
-                // cookie: the token must be put into the Authorization header by our own code, which a
-                // foreign page can't do. So there is nothing for CSRF to abuse here.
+                // CSRF abuses cookies the browser sends on its own; this API keeps no login cookie
                 .csrf(AbstractHttpConfigurer::disable)
                 // a JSON API: no browser password pop-up, no HTML login page, no /logout redirect
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -88,8 +71,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, PUBLIC_READS).permitAll()
                         .requestMatchers(API_DOCS).permitAll()
-                        // the start of a Google login, and Google's way back with the one-time code
-                        .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
+                        .requestMatchers(GOOGLE_LOGIN).permitAll()
                         // Spring forwards errors to /error; showing an error must not need a login
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -97,11 +79,9 @@ public class SecurityConfig {
                 // the token is read before the access rules run, so the rules already know who is calling
                 .addFilterBefore(new JwtAuthenticationFilter(jwtService, errorHandler, tokenBlacklist, sessions, monitor),
                         UsernamePasswordAuthenticationFilter.class)
-                // counts who calls which endpoint; after the JWT filter, so the caller is known
                 .addFilterAfter(new AccessMonitorFilter(monitor), JwtAuthenticationFilter.class);
 
-        // Google login only when a Google client is configured (profile "google"), so the app also starts
-        // without Google keys. Spring does the OAuth2 round trip; our handler turns the result into our JWT.
+        // only when a Google client is configured (profile "google"), so the app also starts without Google keys
         if (googleClient.getIfAvailable() != null) {
             http.oauth2Login(oauth -> oauth
                     .successHandler(googleLoginHandler)
@@ -110,8 +90,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Checks a username + password: loads the user (AppUserDetailsService), then compares the password
-    // with the stored BCrypt hash. AuthService.login calls it.
     @Bean
     public AuthenticationManager authenticationManager(UserDetailsService userDetailsService,
                                                        PasswordEncoder passwordEncoder) {

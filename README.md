@@ -222,12 +222,12 @@ Two different browser problems, often confused:
 - **No CSRF token on the API:** the JWT travels in the `Authorization` header, which only our own JavaScript can set.
   A foreign page can make the browser send cookies, but not this header, and the API has no login cookie. So CSRF has
   nothing to abuse, and the API stays stateless (`csrf().disable()`, no session).
-- **CSRF on where there is a cookie:** a second filter chain for `/csrf-demo/**` uses a server session (`JSESSIONID`)
-  and Spring Security's CSRF filter. Open http://localhost:8080/csrf-demo: the form with the hidden `_csrf` token
-  saves a note; the same form without it gets **403 "Missing or invalid CSRF token"**. The session cookie is also
-  `HttpOnly` and `SameSite=Lax`.
+- **When CSRF protection is needed:** an app that keeps the login in a **cookie** (server session, `JSESSIONID`) must
+  turn Spring Security's CSRF filter on: every form carries a hidden `_csrf` token that a foreign page can't know,
+  and a POST without it gets 403. This API has no such cookie, so it doesn't need it. The only cookie it ever sets
+  (during the Google login round trip) is `HttpOnly` and `SameSite=Lax`.
 - **CORS does not stop CSRF:** a plain HTML form post is sent by the browser no matter what CORS says (CORS only hides
-  the answer). That's why the form needs its own token.
+  the answer). That's why cookie-based apps need the CSRF token as well.
 
 ### Pagination and sorting
 ```

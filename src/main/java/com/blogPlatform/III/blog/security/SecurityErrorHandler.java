@@ -46,15 +46,8 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException exception) throws IOException {
-        monitor.forbidden(request, "ROLE");
+        monitor.forbidden(request);
         write(request, response, HttpStatus.FORBIDDEN, ACCESS_DENIED);
-    }
-
-    // 403 from the CSRF filter of the /csrf-demo chain: the form came without the hidden token, or with a wrong one
-    public void rejectCsrf(HttpServletRequest request, HttpServletResponse response,
-                           AccessDeniedException exception) throws IOException {
-        monitor.forbidden(request, "CSRF");
-        write(request, response, HttpStatus.FORBIDDEN, "Missing or invalid CSRF token");
     }
 
     private void write(HttpServletRequest request, HttpServletResponse response,
