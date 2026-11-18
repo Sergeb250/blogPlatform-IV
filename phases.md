@@ -14,7 +14,7 @@ Every phase is built from the user stories of the project brief. When a phase is
 | 4 | Role-based access control (RBAC) | 4.2 | Done | [phase-4](Docs/explained/phase-4-rbac.md) |
 | 5 | CORS and CSRF | 1.2, 3.1, 3.2 | Done | [phase-5](Docs/explained/phase-5-cors-csrf.md) |
 | 6 | Google OAuth2 login | 4.1 | Done | [phase-6](Docs/explained/phase-6-google-oauth2.md) |
-| 7 | DSA: token blacklist, sessions, hashing | 5.1 | Planned | [phase-7](Docs/explained/phase-7-dsa-tokens.md) |
+| 7 | DSA: token blacklist, sessions, hashing | 5.1 | Done | [phase-7](Docs/explained/phase-7-dsa-tokens.md) |
 | 8 | Security event logging and monitoring | 5.2 | Planned | [phase-8](Docs/explained/phase-8-security-monitoring.md) |
 | 9 | OpenAPI, Postman, README, tests | Deliverables | Planned | [phase-9](Docs/explained/phase-9-docs-and-testing.md) |
 
@@ -131,12 +131,12 @@ the demo form works with the token and fails without it.
 **Story 5.1:** *hashing, token blacklisting and an in-memory map for revoked tokens / active sessions.*
 
 **Tasks**
-- [ ] `TokenBlacklist`: `ConcurrentHashMap<tokenId, expiry>`, O(1) check on every request, expired entries purged every minute
-- [ ] `ActiveSessionRegistry`: token id → session, user id → token ids (log a user out everywhere)
-- [ ] `POST /api/auth/logout` revokes the current token
-- [ ] Role change, profile change and account delete revoke all tokens of that user
-- [ ] Admin: list sessions, force-logout a user
-- [ ] Hashing explained: BCrypt (passwords), HMAC-SHA256 (token signature), hash maps (lookups)
+- [x] `TokenBlacklist`: `ConcurrentHashMap<tokenId, expiry>`, O(1) check on every request, expired entries purged every minute
+- [x] `ActiveSessionRegistry`: token id → session, user id → token ids (log a user out everywhere)
+- [x] `POST /api/auth/logout` revokes the current token
+- [x] Role change, profile change and account delete revoke all tokens of that user
+- [x] Admin: list sessions, force-logout a user
+- [x] Hashing explained: BCrypt (passwords), HMAC-SHA256 (token signature), hash maps (lookups)
 
 **Done when:** a token used after logout or after a role change is refused with 401 "revoked".
 
