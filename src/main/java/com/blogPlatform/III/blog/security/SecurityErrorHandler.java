@@ -1,6 +1,7 @@
 package com.blogPlatform.III.blog.security;
 
 import com.blogPlatform.III.blog.dto.response.ApiResponse;
+import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,11 +26,13 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     public static final String ACCESS_DENIED = "You do not have permission to do this";
 
     private final ObjectMapper objectMapper;
+    private final SecurityMonitor monitor;
 
     // 401: the endpoint needs a login and the request has none
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException exception) throws IOException {
+        monitor.unauthorized(request);
         write(request, response, HttpStatus.UNAUTHORIZED,
                 "Authentication required: log in and send 'Authorization: Bearer <token>'");
     }
@@ -43,12 +46,14 @@ public class SecurityErrorHandler implements AuthenticationEntryPoint, AccessDen
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException exception) throws IOException {
+        monitor.forbidden(request, "ROLE");
         write(request, response, HttpStatus.FORBIDDEN, ACCESS_DENIED);
     }
 
     // 403 from the CSRF filter of the /csrf-demo chain: the form came without the hidden token, or with a wrong one
     public void rejectCsrf(HttpServletRequest request, HttpServletResponse response,
                            AccessDeniedException exception) throws IOException {
+        monitor.forbidden(request, "CSRF");
         write(request, response, HttpStatus.FORBIDDEN, "Missing or invalid CSRF token");
     }
 

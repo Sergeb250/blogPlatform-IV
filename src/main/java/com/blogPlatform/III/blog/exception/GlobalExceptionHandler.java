@@ -2,7 +2,9 @@ package com.blogPlatform.III.blog.exception;
 
 import com.blogPlatform.III.blog.dto.response.ApiResponse;
 import com.blogPlatform.III.blog.security.SecurityErrorHandler;
+import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -33,9 +35,12 @@ import java.util.Map;
 
 @Slf4j
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
 
     private static final String VALIDATION_FAILED = "Validation failed";
+
+    private final SecurityMonitor monitor;
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
@@ -73,6 +78,7 @@ public class GlobalExceptionHandler {
     // Spring Security does, and without this method the catch-all below would answer 500
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(HttpServletRequest request) {
+        monitor.forbidden(request, "ROLE");
         return ApiResponse.error(HttpStatus.FORBIDDEN, SecurityErrorHandler.ACCESS_DENIED, request.getRequestURI());
     }
 

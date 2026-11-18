@@ -34,3 +34,6 @@ build/
 
 ### Private study notes (not pushed) ###
 explained/
+
+### Security log files (logback-spring.xml) ###
+logs/

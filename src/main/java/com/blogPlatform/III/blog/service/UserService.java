@@ -13,6 +13,7 @@ import com.blogPlatform.III.blog.exception.ResourceNotFoundException;
 import com.blogPlatform.III.blog.repository.RoleRepository;
 import com.blogPlatform.III.blog.repository.UserRepository;
 import com.blogPlatform.III.blog.security.AuthUser;
+import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import com.blogPlatform.III.blog.security.token.ActiveSessionRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -37,6 +38,7 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final ActiveSessionRegistry sessions;
+    private final SecurityMonitor monitor;
 
     @Transactional
     public UserResponse register(UserRequest request) {
@@ -96,7 +98,7 @@ public class UserService {
         copyRequestToUser(request, user);
         UserResponse updated = UserResponse.from(userRepository.save(user));
         // the password (and maybe the username) changed: every device must log in again with the new data
-        sessions.revokeAll(id);
+        monitor.tokensRevoked(id, sessions.revokeAll(id), "PROFILE_CHANGE");
         return updated;
     }
 
@@ -113,7 +115,7 @@ public class UserService {
         user.getRoles().clear();
         user.getRoles().addAll(roleRepository.findByNameIn(roles));
         UserResponse updated = UserResponse.from(userRepository.save(user));
-        sessions.revokeAll(id);
+        monitor.tokensRevoked(id, sessions.revokeAll(id), "ROLE_CHANGE");
         return updated;
     }
 
@@ -125,7 +127,7 @@ public class UserService {
         // @SQLDelete on User: UPDATE users SET deleted_at = NOW(6) WHERE user_id = ?
         userRepository.delete(user);
         // a deleted account's tokens would otherwise keep working until they expire
-        sessions.revokeAll(id);
+        monitor.tokensRevoked(id, sessions.revokeAll(id), "ACCOUNT_DELETED");
     }
 
     private User findUser(Long id) {

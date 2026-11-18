@@ -7,6 +7,7 @@ import com.blogPlatform.III.blog.security.AuthUser;
 import com.blogPlatform.III.blog.security.jwt.IssuedToken;
 import com.blogPlatform.III.blog.security.jwt.JwtService;
 import com.blogPlatform.III.blog.security.monitor.LoginAttemptService;
+import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import com.blogPlatform.III.blog.security.token.ActiveSessionRegistry;
 import com.blogPlatform.III.blog.security.token.TokenDetails;
 import lombok.RequiredArgsConstructor;
@@ -26,11 +27,13 @@ public class AuthService {
     private final JwtService jwtService;
     private final ActiveSessionRegistry sessions;
     private final LoginAttemptService loginAttempts;
+    private final SecurityMonitor monitor;
 
     public TokenResponse login(LoginRequest request, String ip) {
         // checked before the password: while blocked, even the right password gets 429, so guessing gains nothing
         Duration wait = loginAttempts.retryAfter(request.username(), ip);
         if (!wait.isZero()) {
+            monitor.loginBlocked(request.username(), ip, wait);
             throw new TooManyLoginAttemptsException(wait);
         }
 
@@ -40,12 +43,15 @@ public class AuthService {
                     UsernamePasswordAuthenticationToken.unauthenticated(request.username(), request.password()));
         } catch (AuthenticationException e) {
             loginAttempts.loginFailed(request.username(), ip);
+            monitor.loginFailed(request.username(), ip);
             // a wrong username or password: BadCredentialsException -> 401 (GlobalExceptionHandler)
             throw e;
         }
 
         loginAttempts.loginSucceeded(request.username(), ip);
-        return issueToken((AuthUser) authentication.getPrincipal(), ip);
+        AuthUser user = (AuthUser) authentication.getPrincipal();
+        monitor.loginSucceeded(user.username(), ip, "PASSWORD");
+        return issueToken(user, ip);
     }
 
     // the one place a token is made (password login and Google login), so every token is tracked from the start
@@ -55,7 +61,8 @@ public class AuthService {
         return TokenResponse.of(token, user);
     }
 
-    public void logout(TokenDetails token) {
+    public void logout(TokenDetails token, String username) {
         sessions.revoke(token.tokenId(), token.expiresAt());
+        monitor.logout(username);
     }
 }

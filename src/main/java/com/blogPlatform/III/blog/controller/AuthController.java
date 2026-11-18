@@ -55,7 +55,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> logout(Authentication authentication) {
         // the JWT filter put the token's id there; a request authenticated another way has nothing to revoke
         if (authentication.getDetails() instanceof TokenDetails token) {
-            authService.logout(token);
+            authService.logout(token, authentication.getName());
         }
         return ApiResponse.ok("Logged out successfully", null);
     }

@@ -2,6 +2,8 @@ package com.blogPlatform.III.blog.security;
 
 import com.blogPlatform.III.blog.security.jwt.JwtAuthenticationFilter;
 import com.blogPlatform.III.blog.security.jwt.JwtService;
+import com.blogPlatform.III.blog.security.monitor.AccessMonitorFilter;
+import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import com.blogPlatform.III.blog.security.oauth2.GoogleLoginHandler;
 import com.blogPlatform.III.blog.security.token.ActiveSessionRegistry;
 import com.blogPlatform.III.blog.security.token.TokenBlacklist;
@@ -29,12 +31,10 @@ import org.springframework.web.cors.CorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
-// turns on @PreAuthorize: the URL rules below only split public / logged in, the roles are checked per endpoint
 @EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    // anyone may read the blog (posts, tags, and the comments / reviews under a post); changing it needs a login
     private static final String[] PUBLIC_READS = {"/api/posts/**", "/api/tags/**"};
     private static final String[] API_DOCS = {"/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**"};
 
@@ -42,10 +42,10 @@ public class SecurityConfig {
     private final JwtService jwtService;
     private final TokenBlacklist tokenBlacklist;
     private final ActiveSessionRegistry sessions;
+    private final SecurityMonitor monitor;
     private final CorsConfigurationSource corsConfigurationSource;
 
-    // A small HTML form app next to the API, to show CSRF protection where it matters: a browser session cookie.
-    // Checked first (@Order(1)); every request that is not /csrf-demo/** goes on to apiSecurity.
+
     @Bean
     @Order(1)
     public SecurityFilterChain csrfDemoSecurity(HttpSecurity http) throws Exception {
@@ -95,8 +95,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 // the token is read before the access rules run, so the rules already know who is calling
-                .addFilterBefore(new JwtAuthenticationFilter(jwtService, errorHandler, tokenBlacklist, sessions),
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService, errorHandler, tokenBlacklist, sessions, monitor),
+                        UsernamePasswordAuthenticationFilter.class)
+                // counts who calls which endpoint; after the JWT filter, so the caller is known
+                .addFilterAfter(new AccessMonitorFilter(monitor), JwtAuthenticationFilter.class);
 
         // Google login only when a Google client is configured (profile "google"), so the app also starts
         // without Google keys. Spring does the OAuth2 round trip; our handler turns the result into our JWT.

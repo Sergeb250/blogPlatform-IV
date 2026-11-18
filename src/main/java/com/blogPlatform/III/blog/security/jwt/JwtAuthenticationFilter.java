@@ -2,6 +2,7 @@ package com.blogPlatform.III.blog.security.jwt;
 
 import com.blogPlatform.III.blog.security.AuthUser;
 import com.blogPlatform.III.blog.security.SecurityErrorHandler;
+import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import com.blogPlatform.III.blog.security.token.ActiveSessionRegistry;
 import com.blogPlatform.III.blog.security.token.TokenBlacklist;
 import com.blogPlatform.III.blog.security.token.TokenDetails;
@@ -35,6 +36,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final SecurityErrorHandler errorHandler;
     private final TokenBlacklist blacklist;
     private final ActiveSessionRegistry sessions;
+    private final SecurityMonitor monitor;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -52,22 +54,22 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             claims = jwtService.verify(header.substring(BEARER.length()));
             user = jwtService.toAuthUser(claims);
         } catch (ExpiredJwtException e) {
-            errorHandler.unauthorized(request, response, "Token has expired, please log in again");
+            reject(request, response, "Token has expired, please log in again");
             return;
         } catch (SignatureException e) {
-            errorHandler.unauthorized(request, response, "Token signature is not valid");
+            reject(request, response, "Token signature is not valid");
             return;
         } catch (UnsupportedJwtException e) {
-            errorHandler.unauthorized(request, response, "Unsigned tokens are not accepted");
+            reject(request, response, "Unsigned tokens are not accepted");
             return;
         } catch (JwtException | IllegalArgumentException e) {
-            errorHandler.unauthorized(request, response, "Token is malformed or not valid");
+            reject(request, response, "Token is malformed or not valid");
             return;
         }
 
         // signed by us and not expired, but maybe logged out, or its user's roles / password changed since
         if (blacklist.isRevoked(claims.getId())) {
-            errorHandler.unauthorized(request, response, "Token has been revoked, please log in again");
+            reject(request, response, "Token has been revoked, please log in again");
             return;
         }
         sessions.recordRequest(claims, request.getRemoteAddr());
@@ -82,5 +84,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.setContext(context);
 
         chain.doFilter(request, response);
+    }
+
+    // every refused token is logged (TOKEN_REJECTED), then answered with 401 and the reason
+    private void reject(HttpServletRequest request, HttpServletResponse response, String reason) throws IOException {
+        monitor.tokenRejected(request, reason);
+        errorHandler.unauthorized(request, response, reason);
     }
 }

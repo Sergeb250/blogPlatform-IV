@@ -3,6 +3,7 @@ package com.blogPlatform.III.blog;
 import com.blogPlatform.III.blog.dto.request.UserRequest;
 import com.blogPlatform.III.blog.repository.UserRepository;
 import com.blogPlatform.III.blog.security.SecurityErrorHandler;
+import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import com.blogPlatform.III.blog.security.oauth2.GoogleLoginHandler;
 import com.blogPlatform.III.blog.security.oauth2.OAuth2Properties;
 import com.blogPlatform.III.blog.service.AuthService;
@@ -52,6 +53,7 @@ class GoogleLoginTest {
     @Autowired UserService userService;
     @Autowired AuthService authService;
     @Autowired SecurityErrorHandler errorHandler;
+    @Autowired SecurityMonitor monitor;
     @Autowired ObjectMapper objectMapper;
     @Autowired UserRepository userRepository;
     @Autowired CacheManager cacheManager;
@@ -115,7 +117,7 @@ class GoogleLoginTest {
     @Test
     void withAFrontend_redirectsThere_withTheTokenInTheFragment() throws Exception {
         GoogleLoginHandler withFrontend = new GoogleLoginHandler(userService, authService, errorHandler, objectMapper,
-                new OAuth2Properties("http://localhost:3000/login/done"));
+                new OAuth2Properties("http://localhost:3000/login/done"), monitor);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession(true);
         MockHttpServletResponse response = new MockHttpServletResponse();
