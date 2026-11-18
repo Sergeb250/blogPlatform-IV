@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -56,6 +57,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>> handleBadCredentials(HttpServletRequest request) {
         return ApiResponse.error(HttpStatus.UNAUTHORIZED, "Invalid username or password", request.getRequestURI());
+    }
+
+    // brute-force protection: 429, and Retry-After tells the client how many seconds to wait
+    @ExceptionHandler(TooManyLoginAttemptsException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTooManyLogins(TooManyLoginAttemptsException ex,
+                                                                 HttpServletRequest request) {
+        ApiResponse<Void> body = ApiResponse.error(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), request.getRequestURI()).getBody();
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(Math.max(1, ex.getRetryAfter().toSeconds())))
+                .body(body);
     }
 
     // a @PreAuthorize that says no. It is thrown inside the controller call, so this class sees it before

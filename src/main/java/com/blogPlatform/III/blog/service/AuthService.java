@@ -2,16 +2,21 @@ package com.blogPlatform.III.blog.service;
 
 import com.blogPlatform.III.blog.dto.request.LoginRequest;
 import com.blogPlatform.III.blog.dto.response.TokenResponse;
+import com.blogPlatform.III.blog.exception.TooManyLoginAttemptsException;
 import com.blogPlatform.III.blog.security.AuthUser;
 import com.blogPlatform.III.blog.security.jwt.IssuedToken;
 import com.blogPlatform.III.blog.security.jwt.JwtService;
+import com.blogPlatform.III.blog.security.monitor.LoginAttemptService;
 import com.blogPlatform.III.blog.security.token.ActiveSessionRegistry;
 import com.blogPlatform.III.blog.security.token.TokenDetails;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
+
+import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
@@ -20,12 +25,26 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final ActiveSessionRegistry sessions;
+    private final LoginAttemptService loginAttempts;
 
     public TokenResponse login(LoginRequest request, String ip) {
-        // a wrong username or password throws BadCredentialsException -> 401 (GlobalExceptionHandler)
-        Authentication authentication = authenticationManager.authenticate(
-                UsernamePasswordAuthenticationToken.unauthenticated(request.username(), request.password()));
+        // checked before the password: while blocked, even the right password gets 429, so guessing gains nothing
+        Duration wait = loginAttempts.retryAfter(request.username(), ip);
+        if (!wait.isZero()) {
+            throw new TooManyLoginAttemptsException(wait);
+        }
 
+        Authentication authentication;
+        try {
+            authentication = authenticationManager.authenticate(
+                    UsernamePasswordAuthenticationToken.unauthenticated(request.username(), request.password()));
+        } catch (AuthenticationException e) {
+            loginAttempts.loginFailed(request.username(), ip);
+            // a wrong username or password: BadCredentialsException -> 401 (GlobalExceptionHandler)
+            throw e;
+        }
+
+        loginAttempts.loginSucceeded(request.username(), ip);
         return issueToken((AuthUser) authentication.getPrincipal(), ip);
     }
 
