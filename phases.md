@@ -16,7 +16,7 @@ Every phase is built from the user stories of the project brief. When a phase is
 | 6 | Google OAuth2 login | 4.1 | Done | [phase-6](Docs/explained/phase-6-google-oauth2.md) |
 | 7 | DSA: token blacklist, sessions, hashing | 5.1 | Done | [phase-7](Docs/explained/phase-7-dsa-tokens.md) |
 | 8 | Security event logging and monitoring | 5.2 | Done | [phase-8](Docs/explained/phase-8-security-monitoring.md) |
-| 9 | OpenAPI, Postman, README, tests | Deliverables | Planned | [phase-9](Docs/explained/phase-9-docs-and-testing.md) |
+| 9 | OpenAPI, Postman, README, tests | Deliverables | Done | [phase-9](Docs/explained/phase-9-docs-and-testing.md) |
 
 ---
 
@@ -160,9 +160,12 @@ the demo form works with the token and fails without it.
 ## Phase 9 – OpenAPI, Postman, README, tests
 
 **Tasks**
-- [ ] OpenAPI: bearer scheme, public endpoints shown without the lock, each operation lists its access rule
-- [ ] Postman collection with tests for every role (`postman/blog-platform-IV-security.postman_collection.json`)
-- [ ] README: setup, access matrix, JWT flow, Google setup, CORS vs CSRF, DSA, logs
-- [ ] Automated tests for every phase; the old tests updated to send tokens
+- [x] OpenAPI: bearer scheme, public endpoints shown without the lock, each operation lists its access rule
+- [x] Postman collection with tests for every role (`postman/blog-platform-IV-security.postman_collection.json`): 38 requests, 7 folders; the Phase III collections removed
+- [x] README: setup, access matrix, JWT flow, Google setup, CORS vs CSRF, DSA, logs
+- [x] Automated tests for every phase; the old tests updated to send tokens
 
 **Done when:** `mvnw test` is green and the Postman collection runs without failures.
+
+Status: `mvnw test` green (200 tests). The collection is checked automatically (valid JSON, every script compiles,
+every variable defined) but still needs one live run in Postman, with `ADMIN_PASSWORD` set.
