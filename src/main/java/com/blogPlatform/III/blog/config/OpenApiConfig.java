@@ -1,39 +1,103 @@
 package com.blogPlatform.III.blog.config;
 
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Operation;
+import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.access.prepost.PreAuthorize;
+
+import java.util.List;
 
 @Configuration
 public class OpenApiConfig {
 
+    static final String BEARER = "bearerAuth";
+    private static final String ACCESS = "**Access:** ";
+
     @Bean
     public OpenAPI blogPlatformOpenApi() {
-        return new OpenAPI().info(new Info()
-                .title("Blogging Platform API")
-                .version("1.0")
-                .description("""
-                        REST API for users, posts, tags, comments and reviews.
+        return new OpenAPI()
+                .info(new Info()
+                        .title("Blogging Platform API")
+                        .version("4.0")
+                        .description("""
+                                REST API for users, posts, tags, comments and reviews, secured with Spring Security.
 
-                        **Every response has the same shape:**
-                        ```
-                        { "success": true,  "status": 200, "message": "...", "data": { ... }, "timestamp": "..." }
-                        { "success": false, "status": 404, "message": "...", "errors": { ... }, "path": "...", "timestamp": "..." }
-                        ```
-                        **Every list is paged** (`page`, `size`, `sort`) and returns `data.content` + `page`, `size`,
-                        `totalElements`, `totalPages`. Without parameters you get page 0 with a default size and order.
-                        `size` must be 1-100, and only the listed sort fields are allowed (otherwise 400).
-                        The feed (`/api/posts/feed`) pages with a cursor instead.
+                                **Log in first:** `POST /api/auth/register`, then `POST /api/auth/login` returns an
+                                `accessToken` (a JWT, valid 60 minutes). Click **Authorize** and paste it: every request then
+                                sends `Authorization: Bearer <token>`. Endpoints without a lock are public.
+                                Google login: open `/oauth2/authorization/google` in a browser (profile `google`).
 
-                        **Strict validation:** every body field, path id and query parameter is checked (Bean Validation);
-                        unknown JSON fields, wrong JSON types ("5" for a number, 4.5 for a whole number) and duplicate
-                        fields are refused. A 400 lists every problem: `errors: { "field": "what is wrong" }`.
+                                **Who may call what:** every operation ends with its **Access** rule, the `@PreAuthorize`
+                                expression of the endpoint. Roles: `READER` (comment, review), `AUTHOR` (+ write posts,
+                                create tags), `ADMIN` (everything). `@ownership...` = only on your own posts / comments / account.
 
-                        **Optimistic locking:** `PUT` requests must send the `version` they read. An old version -> 409.
+                                **Security answers:** `401` no token, or an expired / changed / revoked one · `403` logged in
+                                but not allowed · `429` too many failed logins (see `Retry-After`).
 
-                        **Caching:** posts, users, tags, popular and top-rated posts are cached in memory (Caffeine);
-                        see `GET /api/cache-stats`.
-                        """));
+                                **Every response has the same shape:**
+                                ```
+                                { "success": true,  "status": 200, "message": "...", "data": { ... }, "timestamp": "..." }
+                                { "success": false, "status": 404, "message": "...", "errors": { ... }, "path": "...", "timestamp": "..." }
+                                ```
+                                **Every list is paged** (`page`, `size` 1-100, `sort` from a whitelist); the feed
+                                (`/api/posts/feed`) pages with a cursor. **Strict validation:** unknown or wrongly typed JSON
+                                fields are refused (400). **Optimistic locking:** `PUT` must send the `version` it read (old -> 409).
+                                """))
+                .components(new Components().addSecuritySchemes(BEARER, new SecurityScheme()
+                        .type(SecurityScheme.Type.HTTP)
+                        .scheme("bearer")
+                        .bearerFormat("JWT")
+                        .description("The accessToken from POST /api/auth/login")))
+                // every operation needs the token, except the public ones (publicEndpoints below)
+                .addSecurityItem(new SecurityRequirement().addList(BEARER));
+    }
+
+    // the endpoint's own @PreAuthorize, written into its description: the docs can't drift from the real rule
+    @Bean
+    public OperationCustomizer accessRules() {
+        return (operation, handlerMethod) -> {
+            PreAuthorize rule = handlerMethod.getMethodAnnotation(PreAuthorize.class);
+            if (rule == null) {
+                rule = handlerMethod.getBeanType().getAnnotation(PreAuthorize.class);
+            }
+            if (rule != null) {
+                appendAccess(operation, "`" + rule.value() + "`");
+            }
+            return operation;
+        };
+    }
+
+    // The public endpoints of SecurityConfig: no lock in Swagger UI. Keep the two lists in step (OpenApiTest checks).
+    @Bean
+    public OpenApiCustomizer publicEndpoints() {
+        return openApi -> openApi.getPaths().forEach((path, item) -> item.readOperationsMap().forEach((method, operation) -> {
+            if (isPublic(method, path)) {
+                operation.setSecurity(List.of());
+                appendAccess(operation, "public, no token needed");
+            } else if (operation.getDescription() == null || !operation.getDescription().contains(ACCESS)) {
+                appendAccess(operation, "any logged-in user");
+            }
+        }));
+    }
+
+    private static boolean isPublic(PathItem.HttpMethod method, String path) {
+        boolean signUpOrLogin = method == PathItem.HttpMethod.POST
+                && (path.equals("/api/auth/register") || path.equals("/api/auth/login"));
+        boolean blogRead = method == PathItem.HttpMethod.GET
+                && (path.startsWith("/api/posts") || path.startsWith("/api/tags"));
+        return signUpOrLogin || blogRead;
+    }
+
+    private static void appendAccess(Operation operation, String rule) {
+        String description = operation.getDescription() == null ? "" : operation.getDescription() + "\n\n";
+        operation.setDescription(description + ACCESS + rule);
     }
 }

@@ -37,3 +37,6 @@ explained/
 
 ### Security log files (logback-spring.xml) ###
 logs/
+
+### Local secrets (Google OAuth client): never committed ###
+/config/
