@@ -14,8 +14,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
-// Brute-force protection with a sliding window. For every "username|ip" we keep the times of the recent failed
-// logins, oldest first. 5 failures inside 15 minutes -> blocked until the oldest of them is 15 minutes old.
+// Sliding window per "username|ip": 5 failures within 15 minutes block it until the oldest one leaves the window
 @Component
 @RequiredArgsConstructor
 public class LoginAttemptService {
@@ -23,23 +22,10 @@ public class LoginAttemptService {
     private final LoginProtectionProperties properties;
     private final Clock clock;
 
-    // a queue per key: new failures join at the back, failures older than the window leave at the front
     private final Map<String, Deque<Instant>> failures = new ConcurrentHashMap<>();
 
-    // how long this username + IP must still wait; Duration.ZERO = may try now
     public Duration retryAfter(String username, String ip) {
-        Deque<Instant> times = failures.get(key(username, ip));
-        if (times == null) {
-            return Duration.ZERO;
-        }
-        Instant now = clock.instant();
-        dropOld(times, now);
-        Instant oldest = times.peekFirst();
-        if (oldest == null || times.size() < properties.maxFailures()) {
-            return Duration.ZERO;
-        }
-        // free again as soon as the oldest failure slides out of the window
-        return Duration.between(now, oldest.plus(properties.window()));
+        return retryAfter(key(username, ip));
     }
 
     public void loginFailed(String username, String ip) {
@@ -49,24 +35,17 @@ public class LoginAttemptService {
         times.addLast(now);
     }
 
-    // a correct password ends the series: the next mistake starts counting from zero
     public void loginSucceeded(String username, String ip) {
         failures.remove(key(username, ip));
     }
 
-    // "username|ip" keys that are blocked right now
     public List<String> blockedNow() {
-        return failures.entrySet().stream()
-                .filter(entry -> {
-                    String[] parts = entry.getKey().split("\\|", 2);
-                    return !retryAfter(parts[0], parts[1]).isZero();
-                })
-                .map(Map.Entry::getKey)
+        return failures.keySet().stream()
+                .filter(key -> !retryAfter(key).isZero())
                 .sorted()
                 .toList();
     }
 
-    // keys whose failures are all older than the window are forgotten, so the map doesn't keep growing
     @Scheduled(fixedRate = 60_000)
     public void purgeOld() {
         Instant now = clock.instant();
@@ -74,12 +53,26 @@ public class LoginAttemptService {
         failures.values().removeIf(Deque::isEmpty);
     }
 
+    // zero while the window holds fewer than maxFailures; otherwise the time until the oldest failure leaves it
+    private Duration retryAfter(String key) {
+        Deque<Instant> times = failures.get(key);
+        if (times == null) {
+            return Duration.ZERO;
+        }
+        Instant now = clock.instant();
+        dropOld(times, now);
+        Instant oldest = times.peekFirst();
+        if (oldest == null || times.size() < properties.maxFailures()) {
+            return Duration.ZERO;
+        }
+        return Duration.between(now, oldest.plus(properties.window()));
+    }
+
     // lower case: "Anna" and "anna" are the same account in MySQL, so they must share one counter
     private static String key(String username, String ip) {
         return username.toLowerCase(Locale.ROOT) + "|" + ip;
     }
 
-    // the queue is sorted by time, so only the front can be too old: O(number removed), no full scan
     private void dropOld(Deque<Instant> times, Instant now) {
         Instant limit = now.minus(properties.window());
         Instant oldest;

@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 @Service
@@ -32,7 +33,7 @@ public class TagService {
     @CacheEvict(cacheNames = CacheConfig.TAGS, allEntries = true)
     @Transactional
     public TagResponse create(TagRequest request) {
-        String name = request.name().trim().toLowerCase();
+        String name = normalize(request.name());
         if (tagRepository.existsByName(name)) {
             throw new DuplicateResourceException("Tag '" + name + "' already exists");
         }
@@ -41,7 +42,6 @@ public class TagService {
         return TagResponse.from(tagRepository.save(tag));
     }
 
-    // one cache entry per page, size and sort, e.g. "0-20-name: ASC"
     @Cacheable(cacheNames = CacheConfig.TAGS,
             key = "#pageable.pageNumber + '-' + #pageable.pageSize + '-' + #pageable.sort")
     public PageResponse<TagResponse> getAll(Pageable pageable) {
@@ -66,7 +66,6 @@ public class TagService {
         if (!tagRepository.existsById(id)) {
             throw new ResourceNotFoundException("Tag " + id + " not found");
         }
-        // soft delete (@SQLDelete on Tag): UPDATE tags SET deleted_at = NOW(6); the post_tags links stay
         tagRepository.deleteById(id);
     }
 
@@ -74,7 +73,7 @@ public class TagService {
     public Set<Tag> findOrCreate(List<String> names) {
         Set<Tag> tags = new HashSet<>();
         for (String rawName : names) {
-            String name = rawName.trim().toLowerCase();
+            String name = normalize(rawName);
             Tag tag = tagRepository.findByName(name).orElseGet(() -> {
                 Tag newTag = new Tag();
                 newTag.setName(name);
@@ -83,5 +82,10 @@ public class TagService {
             tags.add(tag);
         }
         return tags;
+    }
+
+    // tag names are kept in lowercase, so "Java" and "java" are one tag
+    public static String normalize(String name) {
+        return name.trim().toLowerCase(Locale.ROOT);
     }
 }

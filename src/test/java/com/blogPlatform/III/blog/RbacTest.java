@@ -32,8 +32,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Who may call what (Phase 4). Every request carries a real signed JWT, so the roles come from the token
-// exactly like in production.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -70,8 +68,6 @@ class RbacTest {
         admin = user("admin", RoleName.ADMIN);
         othersPost = savePost(otherAuthor, "Someone else's post");
     }
-
-    // ---------- posts ----------
 
     @Test
     void reader_cannotCreateAPost() throws Exception {
@@ -148,8 +144,6 @@ class RbacTest {
                 .andExpect(jsonPath("$.message").value("Post 999999 not found"));
     }
 
-    // ---------- comments and reviews ----------
-
     @Test
     void comments_onlyTheirWriterOrAnAdminMayChangeThem() throws Exception {
         Long commentId = commentService.add(othersPost.getId(), reader.getId(), new CommentRequest("First!")).id();
@@ -191,8 +185,6 @@ class RbacTest {
         as(reader, delete(url)).andExpect(status().isOk());
     }
 
-    // ---------- tags ----------
-
     @Test
     void tags_authorsCreate_onlyAdminsDelete() throws Exception {
         as(reader, post("/api/tags"), "{\"name\": \"rbac\"}").andExpect(status().isForbidden());
@@ -204,8 +196,6 @@ class RbacTest {
         as(author, delete(url)).andExpect(status().isForbidden());
         as(admin, delete(url)).andExpect(status().isOk());
     }
-
-    // ---------- users and roles ----------
 
     @Test
     void users_seeAndChangeOnlyTheirOwnAccount() throws Exception {
@@ -265,15 +255,10 @@ class RbacTest {
 
     @Test
     void adminOnlyReads() throws Exception {
-        for (String url : new String[]{"/api/audit-logs", "/api/cache-stats"}) {
-            as(author, get(url)).andExpect(status().isForbidden());
-            as(admin, get(url)).andExpect(status().isOk());
-        }
-        // plain counts: any logged-in user
+        as(author, get("/api/cache-stats")).andExpect(status().isForbidden());
+        as(admin, get("/api/cache-stats")).andExpect(status().isOk());
         as(reader, get("/api/stats")).andExpect(status().isOk());
     }
-
-    // ---------- helpers ----------
 
     private ResultActions as(User user, MockHttpServletRequestBuilder request) throws Exception {
         return mockMvc.perform(request.header(HttpHeaders.AUTHORIZATION, bearer(user)));

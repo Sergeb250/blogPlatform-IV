@@ -5,8 +5,7 @@ import lombok.Getter;
 import java.time.Instant;
 import java.util.concurrent.atomic.AtomicLong;
 
-// One issued token and how it is used. Several requests with the same token can run at once, so the counter is
-// an AtomicLong and the "last seen" fields are volatile (every thread sees the latest value).
+// several requests with the same token can run at once: an AtomicLong counter and volatile "last seen" fields
 public class ActiveSession {
 
     @Getter private final String tokenId;

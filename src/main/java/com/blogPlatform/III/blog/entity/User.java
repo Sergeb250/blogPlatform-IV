@@ -6,8 +6,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.OnDelete;
-import org.hibernate.annotations.OnDeleteAction;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.jdbc.Expectation;
 
@@ -17,7 +15,6 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-
 
 @Entity
 @Table(name = "users")
@@ -48,23 +45,18 @@ public class User {
     @Column(name = "auth_provider", nullable = false, length = 20)
     private AuthProvider authProvider = AuthProvider.LOCAL;
 
-    // Google's id for the account ("sub"); it stays the same when the Gmail address changes
     @Column(name = "provider_id", length = 100)
     private String providerId;
 
-    // LAZY: post lists and comments only need the username, so they never pay for loading roles.
-    // CASCADE on the join table: deleting a user row also removes its user_roles rows.
     @ManyToMany
     @JoinTable(name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
-    @OnDelete(action = OnDeleteAction.CASCADE)
     private Set<Role> roles = new HashSet<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-
 
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;

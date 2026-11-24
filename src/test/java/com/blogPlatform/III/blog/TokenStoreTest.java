@@ -15,12 +15,13 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-// the two in-memory maps on their own, without Spring
 class TokenStoreTest {
 
     static final Instant NOW = Instant.parse("2026-11-17T12:00:00Z");
 
-    final TokenBlacklist blacklist = new TokenBlacklist();
+    // the blacklist reads time from this clock, so a test moves time instead of waiting
+    final LoginAttemptServiceTest.MovableClock clock = new LoginAttemptServiceTest.MovableClock(NOW);
+    final TokenBlacklist blacklist = new TokenBlacklist(clock);
     final ActiveSessionRegistry registry = new ActiveSessionRegistry(blacklist);
 
     final AuthUser anna = new AuthUser(1L, "anna", null, Set.of(RoleName.READER));
@@ -35,14 +36,44 @@ class TokenStoreTest {
     }
 
     @Test
-    void blacklist_forgetsTokensThatHaveExpiredAnyway() {
+    void blacklist_dropsAnEntryExactlyWhenItsTokenExpires() {
+        blacklist.revoke("short", NOW.plus(Duration.ofMinutes(10)));
+        blacklist.revoke("long", NOW.plus(Duration.ofMinutes(30)));
+
+        clock.advance(Duration.ofMinutes(9));
+        assertTrue(blacklist.isRevoked("short"), "still inside its lifetime");
+
+        clock.advance(Duration.ofMinutes(2));   // 11 minutes in: "short" has expired, "long" has not
+        assertFalse(blacklist.isRevoked("short"));
+        assertTrue(blacklist.isRevoked("long"));
+        assertEquals(1, blacklist.size());
+
+        clock.advance(Duration.ofMinutes(20));  // 31 minutes in
+        assertFalse(blacklist.isRevoked("long"));
+        assertEquals(0, blacklist.size());
+    }
+
+    @Test
+    void blacklist_doesNotKeepATokenThatHasExpiredAlready() {
         blacklist.revoke("old", NOW.minus(Duration.ofMinutes(1)));
         blacklist.revoke("fresh", NOW.plus(Duration.ofMinutes(30)));
 
-        assertEquals(1, blacklist.removeExpired(NOW));
-
-        assertFalse(blacklist.isRevoked("old"));
+        assertFalse(blacklist.isRevoked("old"), "its own expiry refuses it anyway, no need to remember it");
         assertTrue(blacklist.isRevoked("fresh"));
+        assertEquals(1, blacklist.size());
+    }
+
+    @Test
+    void blacklist_lookupsDoNotProlongAnEntry() {
+        blacklist.revoke("token", NOW.plus(Duration.ofMinutes(10)));
+
+        for (int minute = 0; minute < 9; minute++) {
+            clock.advance(Duration.ofMinutes(1));
+            assertTrue(blacklist.isRevoked("token"));   // asked every minute
+        }
+        clock.advance(Duration.ofMinutes(2));
+
+        assertFalse(blacklist.isRevoked("token"), "asking again and again did not keep it past the token's expiry");
     }
 
     @Test
@@ -74,12 +105,12 @@ class TokenStoreTest {
         registry.register(token("a2"), anna, "10.0.0.2");
         registry.register(token("b1"), ben, "10.0.0.3");
 
-        assertEquals(2, registry.revokeAll(anna.id()));
+        assertEquals(2, registry.revokeAll(anna.id(), "ADMIN_FORCED"));
 
         assertTrue(blacklist.isRevoked("a1"));
         assertTrue(blacklist.isRevoked("a2"));
         assertFalse(blacklist.isRevoked("b1"));
-        assertEquals(0, registry.revokeAll(anna.id()), "nothing left to revoke");
+        assertEquals(0, registry.revokeAll(anna.id(), "ADMIN_FORCED"), "nothing left to revoke");
     }
 
     @Test
@@ -92,7 +123,7 @@ class TokenStoreTest {
 
         assertEquals(1, registry.size());
         // "old" is gone from the user index too: revokeAll only finds "fresh"
-        assertEquals(1, registry.revokeAll(anna.id()));
+        assertEquals(1, registry.revokeAll(anna.id(), "ADMIN_FORCED"));
     }
 
     private static IssuedToken token(String id) {

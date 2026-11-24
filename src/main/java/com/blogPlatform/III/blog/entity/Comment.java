@@ -13,14 +13,11 @@ import org.hibernate.jdbc.Expectation;
 
 import java.time.LocalDateTime;
 
-// soft delete: remove() runs this UPDATE instead of a DELETE, and every query skips rows with deleted_at set.
-// "AND version = ?" keeps optimistic locking: Hibernate binds the id, then the version.
-// verify = RowCount: 0 rows updated (edited or deleted by someone else since we read it) -> 409.
+// soft delete; Hibernate binds the id, then the version. 0 rows updated = changed by someone else: 409
 @Entity
 @Table(name = "comments",
         indexes = {
                 @Index(name = "idx_comments_post_created", columnList = "post_id, created_at"),
-                // covering index for "live comments per post" (popular posts): no row has to be read
                 @Index(name = "idx_comments_post_live", columnList = "post_id, deleted_at")
         })
 @SQLDelete(sql = "UPDATE comments SET deleted_at = NOW(6) WHERE comment_id = ? AND version = ? AND deleted_at IS NULL",
@@ -53,7 +50,6 @@ public class Comment {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // NULL = live; set when the comment is deleted
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

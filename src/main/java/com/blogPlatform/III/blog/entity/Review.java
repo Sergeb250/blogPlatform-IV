@@ -13,11 +13,9 @@ import org.hibernate.jdbc.Expectation;
 
 import java.time.LocalDateTime;
 
-// soft delete: remove() runs this UPDATE instead of a DELETE, and every query skips rows with deleted_at set.
-// verify = RowCount: 0 rows updated (deleted at the same moment by someone else) is an error, not a silent success.
+// soft delete; 0 rows updated (deleted at the same moment by someone else) is an error
 // one review per user per post, counting live reviews only: see util/SoftDeleteSchemaInitializer
 @Entity
-// covering index for "live reviews and their average per post" (popular, top rated): no row has to be read
 @Table(name = "reviews",
         indexes = @Index(name = "idx_reviews_post_live_rating", columnList = "post_id, deleted_at, rating"))
 @SQLDelete(sql = "UPDATE reviews SET deleted_at = NOW(6) WHERE review_id = ? AND deleted_at IS NULL",
@@ -38,8 +36,7 @@ public class Review {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private Post post;
 
-    // the same column again, read-only, as a plain number: "r.postId" in a query needs no JOIN to posts
-    // ("r.post.id" does, because of the soft-delete restriction on Post). Used by findTopRated.
+    // post_id again, read-only: "r.postId" needs no JOIN to posts and its soft-delete filter, "r.post.id" does
     @Column(name = "post_id", insertable = false, updatable = false)
     private Long postId;
 
@@ -58,7 +55,6 @@ public class Review {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // NULL = live; set when the review is deleted
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 }

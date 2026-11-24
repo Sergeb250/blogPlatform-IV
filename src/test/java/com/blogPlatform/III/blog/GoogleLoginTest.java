@@ -3,7 +3,6 @@ package com.blogPlatform.III.blog;
 import com.blogPlatform.III.blog.dto.request.UserRequest;
 import com.blogPlatform.III.blog.repository.UserRepository;
 import com.blogPlatform.III.blog.security.SecurityErrorHandler;
-import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import com.blogPlatform.III.blog.security.oauth2.GoogleLoginHandler;
 import com.blogPlatform.III.blog.security.oauth2.OAuth2Properties;
 import com.blogPlatform.III.blog.service.AuthService;
@@ -53,7 +52,6 @@ class GoogleLoginTest {
     @Autowired UserService userService;
     @Autowired AuthService authService;
     @Autowired SecurityErrorHandler errorHandler;
-    @Autowired SecurityMonitor monitor;
     @Autowired ObjectMapper objectMapper;
     @Autowired UserRepository userRepository;
     @Autowired CacheManager cacheManager;
@@ -87,7 +85,6 @@ class GoogleLoginTest {
         assertEquals(List.of("READER"), JsonPath.read(body, "$.data.roles"));
         assertTrue(userRepository.findByEmail("maria.lopez@gmail.com").isPresent());
 
-        // the token is a normal token of this API
         String token = JsonPath.read(body, "$.data.accessToken");
         mockMvc.perform(get("/api/auth/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
                 .andExpect(status().isOk())
@@ -117,7 +114,7 @@ class GoogleLoginTest {
     @Test
     void withAFrontend_redirectsThere_withTheTokenInTheFragment() throws Exception {
         GoogleLoginHandler withFrontend = new GoogleLoginHandler(userService, authService, errorHandler, objectMapper,
-                new OAuth2Properties("http://localhost:3000/login/done"), monitor);
+                new OAuth2Properties("http://localhost:3000/login/done"));
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.getSession(true);
         MockHttpServletResponse response = new MockHttpServletResponse();

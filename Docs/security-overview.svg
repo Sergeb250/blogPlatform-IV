@@ -1,0 +1,614 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="2642" viewBox="0 0 2400 2642">
+<defs>
+  <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#334155"/></marker>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#dc2626"/></marker>
+  <marker id="ag" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#16a34a"/></marker>
+  <marker id="ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0L10,5L0,10z" fill="#7c3aed"/></marker>
+</defs>
+<style>
+  text { font-family: 'Segoe UI', Arial, sans-serif; fill: #0f172a; white-space: pre; }
+  .h1 { font-size: 34px; font-weight: 700; }
+  .h2 { font-size: 22px; font-weight: 700; }
+  .sub { font-size: 16px; fill: #475569; }
+  .lab { font-size: 13px; fill: #475569; }
+  .tag { font-size: 11px; font-weight: 700; letter-spacing: 0.8px; fill: #64748b; }
+  .bt { font-size: 16px; font-weight: 700; }
+  .bt15 { font-size: 15px; font-weight: 700; }
+  .btr { font-size: 16px; font-weight: 700; fill: #b91c1c; }
+  .bl { font-size: 13.5px; fill: #334155; }
+  .bl13 { font-size: 13px; fill: #334155; }
+  .bl12 { font-size: 12.5px; fill: #475569; }
+  .mono { font-family: Consolas, 'Courier New', monospace; font-size: 12.5px; fill: #1e293b; }
+  .mono12 { font-family: Consolas, 'Courier New', monospace; font-size: 12.5px; fill: #1e293b; }
+  .req { font-family: Consolas, 'Courier New', monospace; font-size: 13.5px; font-weight: 700; fill: #0f172a; }
+  .evt { font-family: Consolas, 'Courier New', monospace; font-size: 12.5px; font-weight: 700; fill: #6d28d9; }
+  .th { font-size: 12px; font-weight: 700; fill: #64748b; letter-spacing: 0.6px; }
+  .stopt { font-size: 13px; font-weight: 700; fill: #991b1b; }
+  .logt { font-size: 12.5px; font-weight: 700; fill: #6d28d9; }
+  .okt { font-size: 14px; font-weight: 600; fill: #15803d; }
+  .foot { font-size: 13px; fill: #64748b; }
+  .numt { font-size: 18px; font-weight: 700; fill: #ffffff; }
+  .cardt { font-size: 17px; font-weight: 700; }
+  .cards { font-size: 13px; fill: #334155; }
+  .panel { fill: #f8fafc; stroke: #cbd5e1; stroke-width: 1.5; }
+  .num { fill: #0f172a; }
+  .client { fill: #eff6ff; stroke: #3b82f6; stroke-width: 2; }
+  .ours { fill: #ffffff; stroke: #0f172a; stroke-width: 2.5; }
+  .spring { fill: #f1f5f9; stroke: #94a3b8; stroke-width: 1.8; }
+  .ext { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.8; stroke-dasharray: 7 5; }
+  .stop { fill: #fef2f2; stroke: #dc2626; stroke-width: 1.5; }
+  .okbox { fill: #f0fdf4; stroke: #16a34a; stroke-width: 2; }
+  .aop { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 2.5; }
+  .aopbox { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.5; stroke-dasharray: 6 4; }
+  .file { fill: #fffbeb; stroke: #d97706; stroke-width: 2; }
+  .filefold { fill: none; stroke: #d97706; stroke-width: 2; }
+  .info { fill: #eff6ff; stroke: #60a5fa; stroke-width: 1.8; }
+  .note { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+  .mem { fill: #ecfeff; stroke: #0891b2; stroke-width: 2; }
+  .db { fill: #fff7ed; stroke: #c2410c; stroke-width: 2; }
+  .dbtop { fill: none; stroke: #c2410c; stroke-width: 2; }
+  .cardbox { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; }
+  .band-reader { fill: #dbeafe; }
+  .band-author { fill: #ffedd5; }
+  .band-admin { fill: #fce7f3; }
+  .rule { stroke: #e2e8f0; stroke-width: 1; fill: none; }
+  .ln { stroke: #334155; stroke-width: 2.2; fill: none; marker-end: url(#a); }
+  .lnr { stroke: #dc2626; stroke-width: 2; fill: none; marker-end: url(#ar); }
+  .lnp { stroke: #7c3aed; stroke-width: 2; fill: none; stroke-dasharray: 6 4; marker-end: url(#ap); }
+  .lnd { stroke: #d97706; stroke-width: 1.8; fill: none; stroke-dasharray: 3 4; }
+  .resp { stroke: #16a34a; stroke-width: 2.2; fill: none; stroke-dasharray: 7 5; marker-end: url(#ag); }
+  .c2 { fill: #dcfce7; stroke: #16a34a; stroke-width: 1.2; }  .c2t { font-size: 12.5px; font-weight: 700; fill: #166534; }
+  .c4 { fill: #fee2e2; stroke: #dc2626; stroke-width: 1.2; }  .c4t { font-size: 12.5px; font-weight: 700; fill: #991b1b; }
+  .c9 { fill: #ffedd5; stroke: #ea580c; stroke-width: 1.2; }  .c9t { font-size: 12.5px; font-weight: 700; fill: #9a3412; }
+</style>
+<rect width="2400" height="2642" fill="#ffffff"/>
+<text class="h1" x="40" y="62">Blog Platform — security overview</text>
+<text class="sub" x="40" y="96">How one request travels: client → security filters → method security → service → database. Red = where it can be stopped (HTTP code). Purple = what gets written to the security log.</text>
+<rect class="client" x="1490" y="30" width="34" height="20" rx="5"/>
+<text class="lab" x="1532" y="45">client</text>
+<rect class="ours" x="1584" y="30" width="34" height="20" rx="5"/>
+<text class="lab" x="1626" y="45">our code</text>
+<rect class="spring" x="1692" y="30" width="34" height="20" rx="5"/>
+<text class="lab" x="1734" y="45">Spring Security</text>
+<rect class="stop" x="1849" y="30" width="34" height="20" rx="5"/>
+<text class="lab" x="1891" y="45">stopped (4xx)</text>
+<rect class="okbox" x="1490" y="60" width="34" height="20" rx="5"/>
+<text class="lab" x="1532" y="75">success</text>
+<rect class="aop" x="1591" y="60" width="34" height="20" rx="5"/>
+<text class="lab" x="1633" y="75">AOP logging</text>
+<rect class="file" x="1720" y="60" width="34" height="20" rx="5"/>
+<text class="lab" x="1762" y="75">log file</text>
+<rect class="mem" x="1828" y="60" width="34" height="20" rx="5"/>
+<text class="lab" x="1870" y="75">in-memory store</text>
+<rect class="panel" x="20" y="120" width="2360" height="820" rx="14"/>
+<circle class="num" cx="58" cy="154" r="17"/>
+<text class="numt" x="58" y="161" text-anchor="middle">1</text>
+<text class="h2" x="88" y="162">One request through the security filters</text>
+<text class="sub" x="2356" y="162" text-anchor="end">SecurityFilterChain "apiSecurity": stateless JWT · CSRF off · CORS on</text>
+<path class="resp" d="M1669,238 V212 H144 V236"/>
+<text class="okt" x="906" y="204" text-anchor="middle">200 / 201 + ApiResponse JSON  {success, status, message, data}  — errors come back in the same JSON shape</text>
+<rect class="client" x="44" y="238" width="200" height="220" rx="10"/>
+<text class="tag" x="60" y="260">CLIENT</text>
+<text class="bt" x="60" y="284">Client</text>
+<text class="bl13" x="60" y="309">Browser (sign-in page /,</text>
+<text class="bl13" x="60" y="328">Swagger UI), Postman,</text>
+<text class="bl13" x="60" y="347">React app on :3000</text>
+<text class="bl13" x="60" y="385">GET /api/posts/7</text>
+<text class="bl13" x="60" y="404">Authorization:</text>
+<text class="bl13" x="60" y="423">  Bearer eyJhbGciOi…</text>
+<rect class="spring" x="284" y="238" width="210" height="220" rx="10"/>
+<text class="tag" x="300" y="260">SPRING SECURITY</text>
+<text class="bt" x="300" y="284">CorsFilter</text>
+<text class="bl13" x="300" y="309">a page from another origin</text>
+<text class="bl13" x="300" y="328">calls the API: is that</text>
+<text class="bl13" x="300" y="347">origin allowed?</text>
+<text class="bl13" x="300" y="366">app.cors.allowed-origins</text>
+<text class="bl13" x="300" y="385">methods GET POST PUT PATCH</text>
+<text class="bl13" x="300" y="404">headers Authorization,</text>
+<text class="bl13" x="300" y="423">  Content-Type</text>
+<rect class="ours" x="534" y="238" width="300" height="220" rx="10"/>
+<text class="tag" x="550" y="260">OUR CODE</text>
+<text class="bt" x="550" y="284">JwtAuthenticationFilter</text>
+<text class="bl13" x="550" y="309">no Bearer header → go on as anonymous</text>
+<text class="bl13" x="550" y="328">1  verify the HMAC-SHA256 signature</text>
+<text class="bl13" x="550" y="347">2  check issuer and expiry (60 min)</text>
+<text class="bl13" x="550" y="366">3  jti on the blacklist? (Caffeine)</text>
+<text class="bl13" x="550" y="385">4  AuthUser(id, username, roles)</text>
+<text class="bl13" x="550" y="404">     → SecurityContext</text>
+<text class="bl13" x="550" y="423">5  sessions.recordRequest(ip)</text>
+<rect class="ours" x="874" y="238" width="230" height="220" rx="10"/>
+<text class="tag" x="890" y="260">OUR CODE</text>
+<text class="bt" x="890" y="284">AccessMonitorFilter</text>
+<text class="bl13" x="890" y="309">only /api/ requests</text>
+<text class="bl13" x="890" y="328">→ aspect.recordRequest()</text>
+<text class="bl13" x="890" y="347">→ one line in logs/access.log</text>
+<text class="bl13" x="890" y="366">→ count per endpoint</text>
+<text class="bl13" x="890" y="385">    and per user (report)</text>
+<rect class="spring" x="1144" y="238" width="320" height="220" rx="10"/>
+<text class="tag" x="1160" y="260">SPRING · rules set in SecurityConfig</text>
+<text class="bt" x="1160" y="284">AuthorizationFilter (URL rules)</text>
+<text class="bl13" x="1160" y="309">public (permitAll):</text>
+<text class="bl13" x="1160" y="328">  POST /api/auth/register, /api/auth/login</text>
+<text class="bl13" x="1160" y="347">  GET /api/posts/**, /api/tags/**</text>
+<text class="bl13" x="1160" y="366">  /, /index.html, Swagger, /oauth2/**</text>
+<text class="bl13" x="1160" y="385">/api/admin/** → hasRole('ADMIN')</text>
+<text class="bl13" x="1160" y="404">anything else → must be logged in</text>
+<rect class="ours" x="1504" y="238" width="330" height="220" rx="10"/>
+<text class="tag" x="1520" y="260">OUR CODE · method security</text>
+<text class="bt" x="1520" y="284">Controller + @PreAuthorize</text>
+<text class="bl13" x="1520" y="309">a rule on every protected method:</text>
+<text class="bl13" x="1520" y="328">hasRole('ADMIN')</text>
+<text class="bl13" x="1520" y="347">hasAnyRole('AUTHOR', 'ADMIN')</text>
+<text class="bl13" x="1520" y="366">isAuthenticated()</text>
+<text class="bl13" x="1520" y="385">@ownership.isPostAuthor(#id, authentication)</text>
+<text class="bl13" x="1520" y="404">@ownership.isSelf(#id, authentication)</text>
+<text class="bl13" x="1520" y="423">@Valid request body</text>
+<rect class="ours" x="1874" y="238" width="260" height="220" rx="10"/>
+<text class="tag" x="1890" y="260">OUR CODE</text>
+<text class="bt" x="1890" y="284">Service → Repository</text>
+<text class="bl13" x="1890" y="309">@Transactional, @Cacheable</text>
+<text class="bl13" x="1890" y="328">version check → 409</text>
+<text class="bl13" x="1890" y="347">duplicate name / title → 409</text>
+<text class="bl13" x="1890" y="366">Spring Data JPA queries</text>
+<text class="bl13" x="1890" y="385">soft delete (deleted_at)</text>
+<text class="bl13" x="1890" y="404">the user id comes from the</text>
+<text class="bl13" x="1890" y="423">token, never from the body</text>
+<path class="db" d="M2174,254 A95,16 0 0 1 2364,254 V442 A95,16 0 0 1 2174,442 Z"/>
+<path class="dbtop" d="M2174,254 A95,16 0 0 0 2364,254"/>
+<text class="bt" x="2269" y="304" text-anchor="middle">MySQL</text>
+<text class="bl" x="2269" y="330" text-anchor="middle">blog_db</text>
+<text class="bl" x="2269" y="349" text-anchor="middle">users · roles</text>
+<text class="bl" x="2269" y="368" text-anchor="middle">posts · tags</text>
+<text class="bl" x="2269" y="387" text-anchor="middle">comments · reviews</text>
+<path class="ln" d="M244,348 H282"/>
+<path class="ln" d="M494,348 H532"/>
+<path class="ln" d="M834,348 H872"/>
+<path class="ln" d="M1104,348 H1142"/>
+<path class="ln" d="M1464,348 H1502"/>
+<path class="ln" d="M1834,348 H1872"/>
+<path class="ln" d="M2134,348 H2172"/>
+<rect class="stop" x="284" y="492" width="210" height="196" rx="10"/>
+<path class="lnr" d="M389,458 V490"/>
+<rect class="c4" x="298" y="506" width="44" height="22" rx="11"/>
+<text class="c4t" x="320" y="522" text-anchor="middle">403</text>
+<text class="stopt" x="350" y="522">origin not allowed</text>
+<text class="bl12" x="350" y="546">only browsers send</text>
+<text class="bl12" x="350" y="566">an Origin header;</text>
+<text class="bl12" x="350" y="586">Postman is never</text>
+<text class="bl12" x="350" y="606">blocked here</text>
+<text class="bl12" x="298" y="626">not a security event:</text>
+<text class="bl12" x="298" y="646">not logged</text>
+<rect class="stop" x="534" y="492" width="300" height="196" rx="10"/>
+<path class="lnr" d="M684,458 V490"/>
+<rect class="c4" x="548" y="506" width="44" height="22" rx="11"/>
+<text class="c4t" x="570" y="522" text-anchor="middle">401</text>
+<text class="stopt" x="600" y="522">bad signature, expired,</text>
+<text class="bl12" x="600" y="546">revoked, unsigned or</text>
+<text class="bl12" x="600" y="566">malformed token</text>
+<text class="bl12" x="548" y="586">→ SecurityErrorHandler.rejectToken()</text>
+<text class="logt" x="548" y="606">▸ logged: TOKEN_REJECTED</text>
+<text class="bl12" x="548" y="626">the request stops here: no</text>
+<text class="bl12" x="548" y="646">controller, no access.log line</text>
+<rect class="aopbox" x="874" y="492" width="230" height="196" rx="10"/>
+<path class="lnp" d="M989,458 V490"/>
+<text class="logt" x="888" y="520">logged for every /api/ call:</text>
+<text class="mono12" x="888" y="546">API_REQUEST user=anna</text>
+<text class="mono12" x="888" y="566">  ip=10.0.0.4 method=GET</text>
+<text class="mono12" x="888" y="586">  path=/api/posts/7</text>
+<text class="mono12" x="888" y="626">↓ recordRequest()</text>
+<text class="mono12" x="888" y="646">   (section 2)</text>
+<rect class="stop" x="1144" y="492" width="320" height="196" rx="10"/>
+<path class="lnr" d="M1304,458 V490"/>
+<rect class="c4" x="1158" y="506" width="44" height="22" rx="11"/>
+<text class="c4t" x="1180" y="522" text-anchor="middle">401</text>
+<text class="stopt" x="1210" y="522">no token on a protected URL</text>
+<text class="bl12" x="1158" y="546">→ SecurityErrorHandler.commence()</text>
+<text class="logt" x="1158" y="566">▸ logged: ACCESS_UNAUTHENTICATED</text>
+<rect class="c4" x="1158" y="578" width="44" height="22" rx="11"/>
+<text class="c4t" x="1180" y="594" text-anchor="middle">403</text>
+<text class="stopt" x="1210" y="594">not ADMIN on /api/admin/**</text>
+<text class="bl12" x="1158" y="618">→ SecurityErrorHandler.handle()</text>
+<text class="logt" x="1158" y="638">▸ logged: ACCESS_DENIED reason=ROLE</text>
+<rect class="stop" x="1504" y="492" width="330" height="196" rx="10"/>
+<path class="lnr" d="M1669,458 V490"/>
+<rect class="c4" x="1518" y="506" width="44" height="22" rx="11"/>
+<text class="c4t" x="1540" y="522" text-anchor="middle">403</text>
+<text class="stopt" x="1570" y="522">role or owner rule says no</text>
+<text class="bl12" x="1518" y="546">→ GlobalExceptionHandler.handleAccessDenied</text>
+<text class="logt" x="1518" y="566">▸ logged: ACCESS_DENIED reason=ROLE</text>
+<rect class="c4" x="1518" y="578" width="44" height="22" rx="11"/>
+<text class="c4t" x="1540" y="594" text-anchor="middle">404</text>
+<text class="stopt" x="1570" y="594">post / comment / review not</text>
+<text class="bl12" x="1570" y="618">found (Ownership checks first)</text>
+<rect class="c4" x="1518" y="630" width="44" height="22" rx="11"/>
+<text class="c4t" x="1540" y="646" text-anchor="middle">400</text>
+<text class="stopt" x="1570" y="646">invalid body, unknown field</text>
+<rect class="stop" x="1874" y="492" width="260" height="196" rx="10"/>
+<path class="lnr" d="M2004,458 V490"/>
+<rect class="c4" x="1888" y="506" width="44" height="22" rx="11"/>
+<text class="c4t" x="1910" y="522" text-anchor="middle">409</text>
+<text class="stopt" x="1940" y="522">old version (someone</text>
+<text class="bl12" x="1940" y="546">changed it), duplicate</text>
+<text class="bl12" x="1940" y="566">title / username / email</text>
+<rect class="c4" x="1888" y="578" width="44" height="22" rx="11"/>
+<text class="c4t" x="1910" y="594" text-anchor="middle">404</text>
+<text class="stopt" x="1940" y="594">not found</text>
+<rect class="c4" x="1888" y="610" width="44" height="22" rx="11"/>
+<text class="c4t" x="1910" y="626" text-anchor="middle">409</text>
+<text class="stopt" x="1940" y="626">admin removes his</text>
+<text class="bl12" x="1940" y="650">own ADMIN role</text>
+<rect class="note" x="44" y="716" width="780" height="206" rx="10"/>
+<text class="bt" x="60" y="746">Two filter chains (SecurityConfig)</text>
+<text class="bl13" x="60" y="771">@Order(1) csrfDemoSecurity — only /csrf-demo/**: it keeps a session cookie, so CSRF tokens are ON;</text>
+<text class="bl13" x="60" y="794">     a form sent without the hidden _csrf token → 403, logged ACCESS_DENIED reason=CSRF</text>
+<text class="bl13" x="60" y="817">@Order(2) apiSecurity — everything else: STATELESS (no session, no login cookie), CSRF OFF</text>
+<text class="bl13" x="60" y="840">     (there is no cookie a forged page could use), CORS ON, JwtAuthenticationFilter,</text>
+<text class="bl13" x="60" y="863">     AccessMonitorFilter, and oauth2Login only when Google keys are set (profile google)</text>
+<text class="bl13" x="60" y="886">Method security: @EnableMethodSecurity turns every @PreAuthorize into a check before the method runs</text>
+<rect class="note" x="1044" y="716" width="560" height="206" rx="10"/>
+<text class="bt" x="1060" y="746">What is inside the JWT</text>
+<text class="mono12" x="1060" y="774">header     {"alg": "HS256"}</text>
+<text class="mono12" x="1060" y="796">payload    {"sub": "anna", "uid": 7, "roles": ["READER"],</text>
+<text class="mono12" x="1060" y="818">            "iat": …, "exp": … (+60 min), "jti": "uuid",</text>
+<text class="mono12" x="1060" y="840">            "iss": "blog-platform"}</text>
+<text class="mono12" x="1060" y="862">signature  HMAC-SHA256(header.payload, JWT_SECRET)</text>
+<text class="mono12" x="1060" y="884">logout puts the jti on the blacklist until "exp"</text>
+<rect class="note" x="1644" y="716" width="720" height="206" rx="10"/>
+<text class="bt" x="1660" y="746">HTTP status codes in this API</text>
+<rect class="c2" x="1662" y="762" width="44" height="22" rx="11"/>
+<text class="c2t" x="1684" y="778" text-anchor="middle">200</text>
+<text class="bl13" x="1716" y="778">OK · 201 Created: the request worked</text>
+<rect class="c4" x="1662" y="784" width="44" height="22" rx="11"/>
+<text class="c4t" x="1684" y="800" text-anchor="middle">400</text>
+<text class="bl13" x="1716" y="800">invalid body or parameter (strict JSON, validation)</text>
+<rect class="c4" x="1662" y="806" width="44" height="22" rx="11"/>
+<text class="c4t" x="1684" y="822" text-anchor="middle">401</text>
+<text class="bl13" x="1716" y="822">not logged in, or a bad / expired / revoked token</text>
+<rect class="c4" x="1662" y="828" width="44" height="22" rx="11"/>
+<text class="c4t" x="1684" y="844" text-anchor="middle">403</text>
+<text class="bl13" x="1716" y="844">logged in, but not allowed (role, owner, CSRF, CORS)</text>
+<rect class="c4" x="1662" y="850" width="44" height="22" rx="11"/>
+<text class="c4t" x="1684" y="866" text-anchor="middle">404</text>
+<text class="bl13" x="1716" y="866">not found (also soft-deleted rows)</text>
+<rect class="c4" x="1662" y="872" width="44" height="22" rx="11"/>
+<text class="c4t" x="1684" y="888" text-anchor="middle">409</text>
+<text class="bl13" x="1716" y="888">conflict: old version, duplicate, own ADMIN role</text>
+<rect class="c9" x="1662" y="894" width="44" height="22" rx="11"/>
+<text class="c9t" x="1684" y="910" text-anchor="middle">429</text>
+<text class="bl13" x="1716" y="910">too many failed logins: wait (Retry-After header)</text>
+<rect class="panel" x="20" y="970" width="2360" height="560" rx="14"/>
+<circle class="num" cx="58" cy="1004" r="17"/>
+<text class="numt" x="58" y="1011" text-anchor="middle">2</text>
+<text class="h2" x="88" y="1012">Monitoring and logging with AOP (SecurityEventAspect)</text>
+<text class="sub" x="2356" y="1012" text-anchor="end">the login, token and access code has no logging calls: the aspect writes every line</text>
+<rect class="note" x="44" y="1030" width="700" height="400" rx="10"/>
+<text class="bt" x="60" y="1060">Watched methods (pointcuts) → event written</text>
+<text x="60" y="1090"><tspan class="th">advice</tspan></text>
+<text x="194" y="1090"><tspan class="th">method</tspan></text>
+<text x="499" y="1090"><tspan class="th">event</tspan></text>
+<path class="rule" d="M58,1100 H730"/>
+<text class="mono12" x="60" y="1126">@AfterReturning</text>
+<text class="bl13" x="194" y="1126">AuthService.login</text>
+<text class="evt" x="499" y="1126">LOGIN_SUCCESS</text>
+<text class="mono12" x="60" y="1153">@AfterThrowing</text>
+<text class="bl13" x="194" y="1153">AuthService.login (BadCredentials)</text>
+<text class="evt" x="499" y="1153">LOGIN_FAILURE</text>
+<text class="mono12" x="60" y="1180">@AfterThrowing</text>
+<text class="bl13" x="194" y="1180">AuthService.login (TooManyLogins)</text>
+<text class="evt" x="499" y="1180">LOGIN_BLOCKED</text>
+<text class="mono12" x="60" y="1207">@AfterReturning</text>
+<text class="bl13" x="194" y="1207">AuthService.loginWithGoogle</text>
+<text class="evt" x="499" y="1207">LOGIN_SUCCESS (GOOGLE)</text>
+<text class="mono12" x="60" y="1234">@Before</text>
+<text class="bl13" x="194" y="1234">ErrorHandler.rejectGoogleLogin</text>
+<text class="evt" x="499" y="1234">GOOGLE_LOGIN_FAILURE</text>
+<text class="mono12" x="60" y="1261">@AfterReturning</text>
+<text class="bl13" x="194" y="1261">AuthService.logout</text>
+<text class="evt" x="499" y="1261">LOGOUT</text>
+<text class="mono12" x="60" y="1288">@Before</text>
+<text class="bl13" x="194" y="1288">ErrorHandler.rejectToken</text>
+<text class="evt" x="499" y="1288">TOKEN_REJECTED</text>
+<text class="mono12" x="60" y="1315">@Before</text>
+<text class="bl13" x="194" y="1315">ErrorHandler.commence</text>
+<text class="evt" x="499" y="1315">ACCESS_UNAUTHENTICATED</text>
+<text class="mono12" x="60" y="1342">@Before</text>
+<text class="bl13" x="194" y="1342">ErrorHandler.handle, handleAccessDenied</text>
+<text class="evt" x="499" y="1342">ACCESS_DENIED  ROLE</text>
+<text class="mono12" x="60" y="1369">@Before</text>
+<text class="bl13" x="194" y="1369">ErrorHandler.rejectCsrf</text>
+<text class="evt" x="499" y="1369">ACCESS_DENIED  CSRF</text>
+<text class="mono12" x="60" y="1396">@AfterReturning</text>
+<text class="bl13" x="194" y="1396">ActiveSessionRegistry.revokeAll</text>
+<text class="evt" x="499" y="1396">TOKENS_REVOKED</text>
+<path class="lnp" d="M744,1230 H798"/>
+<text class="logt" x="771" y="1220" text-anchor="middle">proxy</text>
+<rect class="aop" x="800" y="1070" width="360" height="320" rx="10"/>
+<text class="tag" x="816" y="1092">OUR CODE · aop</text>
+<text class="bt" x="816" y="1116">SecurityEventAspect</text>
+<text class="bl13" x="816" y="1141">@Aspect @Component</text>
+<text class="bl13" x="816" y="1163">for every event:</text>
+<text class="bl13" x="816" y="1185">1  write one key=value line</text>
+<text class="bl13" x="816" y="1207">2  add 1 to a counter in memory</text>
+<text class="bl13" x="816" y="1229">clean() removes line breaks:</text>
+<text class="bl13" x="816" y="1251">     no fake lines (log injection)</text>
+<text class="bl13" x="816" y="1295">recordRequest(user, ip, method, path)</text>
+<text class="bl13" x="816" y="1317">← called by AccessMonitorFilter</text>
+<path class="lnp" d="M989,688 V1068"/>
+<text class="logt" x="1000" y="958">recordRequest()</text>
+<path class="file" d="M1230,1030 H1832 L1850,1048 V1202 H1230 Z"/>
+<path class="filefold" d="M1832,1030 V1048 H1850"/>
+<text class="bt" x="1246" y="1060">logs/security.log  — logger "SECURITY" (also on the console)</text>
+<text class="mono" x="1246" y="1086">WARN  LOGIN_FAILURE user=anna ip=10.0.0.4 failures_for_user=1</text>
+<text class="mono" x="1246" y="1107">INFO  LOGIN_SUCCESS user=anna ip=10.0.0.4 method=PASSWORD</text>
+<text class="mono" x="1246" y="1128">WARN  ACCESS_DENIED user=anna ip=10.0.0.4 method=GET path=/api/users reason=ROLE</text>
+<text class="mono" x="1246" y="1149">INFO  TOKENS_REVOKED user_id=5 count=1 reason=ROLE_CHANGE</text>
+<text class="mono" x="1246" y="1170">(every line starts with the date and time)</text>
+<path class="file" d="M1230,1215 H1832 L1850,1233 V1307 H1230 Z"/>
+<path class="filefold" d="M1832,1215 V1233 H1850"/>
+<text class="bt" x="1246" y="1245">logs/access.log  — logger "ACCESS" (file only)</text>
+<text class="mono" x="1246" y="1271">API_REQUEST user=anna ip=10.0.0.4 method=GET path=/api/posts/7</text>
+<rect class="info" x="1230" y="1320" width="620" height="190" rx="10"/>
+<text class="bt" x="1246" y="1350">GET /api/admin/security/report   (ADMIN only)</text>
+<text class="bl12" x="1246" y="1372">the in-memory counters, since the last start</text>
+<text class="bl13" x="1246" y="1400">logins: ok / failed / blocked</text>
+<text class="bl13" x="1246" y="1421">rejected tokens · 401s · 403s</text>
+<text class="bl13" x="1246" y="1442">active sessions · revoked tokens</text>
+<text class="bl13" x="1246" y="1463">blockedNow: ["anna|10.0.0.4"]</text>
+<text class="bl13" x="1246" y="1484">suspectedBruteForce: 5+ failures</text>
+<text class="bl13" x="1556" y="1400">top 5 endpoints: GET /api/posts/{id} …</text>
+<text class="bl13" x="1556" y="1421">top 5 users: anna (12 requests) …</text>
+<text class="bl13" x="1556" y="1442">+ GET  /api/admin/security/sessions</text>
+<text class="bl13" x="1556" y="1463">+ DELETE …/security/users/{id}/sessions</text>
+<text class="bl13" x="1556" y="1484">   (log a user out everywhere)</text>
+<path class="lnp" d="M1160,1110 H1228"/>
+<path class="lnp" d="M1160,1262 H1228"/>
+<path class="lnp" d="M1160,1372 H1228"/>
+<text class="logt" x="1194" y="1102" text-anchor="middle">line</text>
+<text class="logt" x="1194" y="1254" text-anchor="middle">line</text>
+<text class="logt" x="1194" y="1364" text-anchor="middle">count</text>
+<rect class="file" x="1910" y="1030" width="450" height="290" rx="10"/>
+<text class="tag" x="1926" y="1052">RETENTION POLICY</text>
+<text class="bt" x="1926" y="1076">logback-spring.xml</text>
+<text class="bl13" x="1926" y="1101">one RollingFileAppender per file,</text>
+<text class="bl13" x="1926" y="1121">TimeBasedRollingPolicy:</text>
+<text class="bl13" x="1926" y="1141">•  a new file every day:</text>
+<text class="bl13" x="1926" y="1161">     security-2026-11-21.log</text>
+<text class="bl13" x="1926" y="1181">     access-2026-11-21.log</text>
+<text class="bl13" x="1926" y="1201">•  KEEP_DAYS = 30 → older files deleted</text>
+<text class="bl13" x="1926" y="1221">•  TOTAL_SIZE_CAP = 1 GB per log</text>
+<text class="bl13" x="1926" y="1241">     (oldest files deleted first)</text>
+<text class="bl13" x="1926" y="1261">•  cleanHistoryOnStart = true</text>
+<text class="bl13" x="1926" y="1281">•  ACCESS: additivity="false"</text>
+<path class="lnd" d="M1908,1110 H1852"/>
+<path class="lnd" d="M1908,1262 H1852"/>
+<rect class="note" x="1910" y="1335" width="450" height="175" rx="10"/>
+<text class="bt" x="1926" y="1365">Memory vs files</text>
+<text class="bl13" x="1926" y="1390">the report counters live in memory:</text>
+<text class="bl13" x="1926" y="1411">a restart sets them back to 0</text>
+<text class="bl13" x="1926" y="1432">the log files are the permanent record</text>
+<text class="bl13" x="1926" y="1453">(30 days), searchable with grep or</text>
+<text class="bl13" x="1926" y="1474">Select-String</text>
+<rect class="panel" x="20" y="1560" width="2360" height="450" rx="14"/>
+<circle class="num" cx="58" cy="1594" r="17"/>
+<text class="numt" x="58" y="1601" text-anchor="middle">3</text>
+<text class="h2" x="88" y="1602">Logging in, logging out and the in-memory stores (DSA)</text>
+<text class="sub" x="2356" y="1602" text-anchor="end">tokens are not stored in the database: the server keeps only small maps</text>
+<rect class="client" x="44" y="1625" width="240" height="112" rx="10"/>
+<text class="bt" x="60" y="1655">POST /api/auth/login</text>
+<text class="bl13" x="60" y="1680">{username, password}</text>
+<text class="bl13" x="60" y="1699">public, no token</text>
+<rect class="ours" x="324" y="1625" width="270" height="112" rx="10"/>
+<text class="bt" x="340" y="1655">LoginAttemptService</text>
+<text class="bl13" x="340" y="1680">sliding window per user|ip</text>
+<text class="bl13" x="340" y="1699">5 failures in 15 min</text>
+<text class="bl13" x="340" y="1718">→ blocked, with Retry-After</text>
+<rect class="ours" x="634" y="1625" width="300" height="112" rx="10"/>
+<text class="bt" x="650" y="1655">AuthService: BCrypt check</text>
+<text class="bl13" x="650" y="1680">matches(password, hash)</text>
+<text class="bl13" x="650" y="1699">unknown user: one BCrypt anyway</text>
+<text class="bl13" x="650" y="1718">(same time → no username leak)</text>
+<rect class="ours" x="974" y="1625" width="260" height="112" rx="10"/>
+<text class="bt" x="990" y="1655">JwtService.issue</text>
+<text class="bl13" x="990" y="1680">HS256 signed, valid 60 min</text>
+<text class="bl13" x="990" y="1699">sub · uid · roles · jti · iss</text>
+<rect class="ours" x="1274" y="1625" width="280" height="112" rx="10"/>
+<text class="bt" x="1290" y="1655">ActiveSessionRegistry</text>
+<text class="bl13" x="1290" y="1680">register: jti → session</text>
+<text class="bl13" x="1290" y="1699">and userId → its jtis</text>
+<rect class="okbox" x="1594" y="1625" width="290" height="112" rx="10"/>
+<text class="bt" x="1610" y="1655">200 OK</text>
+<text class="bl13" x="1610" y="1680">{accessToken, tokenType: "Bearer",</text>
+<text class="bl13" x="1610" y="1699"> expiresIn: 3600, roles}</text>
+<text class="bl13" x="1610" y="1718">▸ logged: LOGIN_SUCCESS</text>
+<path class="ln" d="M284,1681 H322"/>
+<path class="ln" d="M594,1681 H632"/>
+<path class="ln" d="M934,1681 H972"/>
+<path class="ln" d="M1234,1681 H1272"/>
+<path class="ln" d="M1554,1681 H1592"/>
+<rect class="c9" x="338" y="1745" width="44" height="22" rx="11"/>
+<text class="c9t" x="360" y="1761" text-anchor="middle">429</text>
+<text class="logt" x="390" y="1761">blocked → LOGIN_BLOCKED</text>
+<rect class="c4" x="648" y="1745" width="44" height="22" rx="11"/>
+<text class="c4t" x="670" y="1761" text-anchor="middle">401</text>
+<text class="logt" x="700" y="1761">wrong → LOGIN_FAILURE (+1 in the window)</text>
+<rect class="client" x="44" y="1782" width="240" height="96" rx="10"/>
+<text class="bt" x="60" y="1812">Continue with Google</text>
+<text class="bl13" x="60" y="1837">/oauth2/authorization/google</text>
+<rect class="ext" x="324" y="1782" width="230" height="96" rx="10"/>
+<text class="bt" x="340" y="1812">Google</text>
+<text class="bl13" x="340" y="1837">the user signs in</text>
+<text class="bl13" x="340" y="1856">and agrees</text>
+<rect class="ours" x="594" y="1782" width="420" height="96" rx="10"/>
+<text class="bt" x="610" y="1812">GoogleLoginHandler  (/login/oauth2/code/google)</text>
+<text class="bl13" x="610" y="1837">verified email only, else 401 → GOOGLE_LOGIN_FAILURE</text>
+<text class="bl13" x="610" y="1856">finds the user by email, or creates a READER</text>
+<rect class="okbox" x="1054" y="1782" width="400" height="96" rx="10"/>
+<text class="bt" x="1070" y="1812">302 → /#access_token=eyJ…</text>
+<text class="bl13" x="1070" y="1837">the token is in the #fragment: a browser</text>
+<text class="bl13" x="1070" y="1856">never sends it to any server</text>
+<path class="ln" d="M284,1830 H322"/>
+<path class="ln" d="M554,1830 H592"/>
+<path class="ln" d="M1014,1830 H1052"/>
+<rect class="client" x="44" y="1898" width="240" height="92" rx="10"/>
+<text class="bt" x="60" y="1928">POST /api/auth/logout</text>
+<text class="bl13" x="60" y="1953">with the Bearer token</text>
+<rect class="ours" x="324" y="1898" width="400" height="92" rx="10"/>
+<text class="bt" x="340" y="1928">TokenBlacklist.revoke(jti, exp)</text>
+<text class="bl13" x="340" y="1953">only this token: other devices keep theirs</text>
+<text class="bl13" x="340" y="1972">▸ logged: LOGOUT</text>
+<rect class="stop" x="764" y="1898" width="300" height="92" rx="10"/>
+<text class="btr" x="780" y="1928">Same token again → 401</text>
+<text class="bl13" x="780" y="1953">"Token has been revoked,</text>
+<text class="bl13" x="780" y="1972"> please log in again"</text>
+<rect class="ours" x="1104" y="1898" width="780" height="92" rx="10"/>
+<text class="bt" x="1120" y="1928">ActiveSessionRegistry.revokeAll(userId)</text>
+<text class="bl13" x="1120" y="1953">role change · profile change · user deleted · admin DELETE …/sessions</text>
+<text class="bl13" x="1120" y="1972">→ every token of that user goes on the blacklist   ▸ logged: TOKENS_REVOKED</text>
+<path class="ln" d="M284,1944 H322"/>
+<path class="ln" d="M724,1944 H762"/>
+<rect class="mem" x="1924" y="1625" width="440" height="82" rx="10"/>
+<text class="bt15" x="1940" y="1655">TokenBlacklist — Caffeine Cache&lt;jti, expiry&gt;</text>
+<text class="bl13" x="1940" y="1680">O(1) check on every request; each entry</text>
+<text class="bl13" x="1940" y="1699">expires together with its token</text>
+<rect class="mem" x="1924" y="1717" width="440" height="82" rx="10"/>
+<text class="bt15" x="1940" y="1747">ActiveSessionRegistry — 2 ConcurrentHashMaps</text>
+<text class="bl13" x="1940" y="1772">jti → session · userId → {jti}</text>
+<text class="bl13" x="1940" y="1791">revoke all tokens of a user: one lookup</text>
+<rect class="mem" x="1924" y="1809" width="440" height="82" rx="10"/>
+<text class="bt15" x="1940" y="1839">LoginAttemptService — Map&lt;user|ip, Deque&lt;time&gt;&gt;</text>
+<text class="bl13" x="1940" y="1864">sliding window: old failures leave</text>
+<text class="bl13" x="1940" y="1883">at the front of the deque</text>
+<rect class="mem" x="1924" y="1901" width="440" height="82" rx="10"/>
+<text class="bt15" x="1940" y="1931">Hashing</text>
+<text class="bl13" x="1940" y="1956">BCrypt for passwords (salted, cost 10)</text>
+<text class="bl13" x="1940" y="1975">HMAC-SHA256 for the token signature</text>
+<rect class="panel" x="20" y="2040" width="2360" height="552" rx="14"/>
+<circle class="num" cx="58" cy="2074" r="17"/>
+<text class="numt" x="58" y="2081" text-anchor="middle">4</text>
+<text class="h2" x="88" y="2082">Three examples: who may do what</text>
+<text class="sub" x="2356" y="2082" text-anchor="end">same filters for everyone; the token's roles and the owner checks decide</text>
+<rect class="cardbox" x="44" y="2100" width="757" height="472" rx="12"/>
+<path class="band-reader" d="M44,2112 A12,12 0 0 1 56,2100 H789 A12,12 0 0 1 801,2112 V2162 H44 Z"/>
+<text class="cardt" x="62" y="2130">READER  anna — reads and comments</text>
+<text class="cards" x="62" y="2152">token roles: ["READER"]</text>
+<text class="req" x="62" y="2198">GET /api/posts/7</text>
+<text class="bl12" x="62" y="2218">public: GET /api/posts/** is permitAll, no token needed</text>
+<rect class="c2" x="717.2" y="2181" width="65.8" height="24" rx="12"/>
+<text class="c2t" x="750.1" y="2198" text-anchor="middle">200 OK</text>
+<path class="rule" d="M58,2231 H787"/>
+<text class="req" x="62" y="2254">GET /api/posts?status=PUBLISHED&amp;tag=java</text>
+<text class="bl12" x="62" y="2274">public; filters, paging and sorting</text>
+<rect class="c2" x="717.2" y="2237" width="65.8" height="24" rx="12"/>
+<text class="c2t" x="750.1" y="2254" text-anchor="middle">200 OK</text>
+<path class="rule" d="M58,2287 H787"/>
+<text class="req" x="62" y="2310">POST /api/posts/7/comments</text>
+<text class="bl12" x="62" y="2330">@PreAuthorize("isAuthenticated()")</text>
+<rect class="c2" x="680.7" y="2293" width="102.3" height="24" rx="12"/>
+<text class="c2t" x="731.85" y="2310" text-anchor="middle">201 Created</text>
+<path class="rule" d="M58,2343 H787"/>
+<text class="req" x="62" y="2366">POST /api/posts</text>
+<text class="bl12" x="62" y="2386">hasAnyRole('AUTHOR', 'ADMIN') says no</text>
+<rect class="c4" x="666.1" y="2349" width="116.89999999999999" height="24" rx="12"/>
+<text class="c4t" x="724.5500000000001" y="2366" text-anchor="middle">403 Forbidden</text>
+<text class="logt" x="783" y="2386" text-anchor="end">▸ ACCESS_DENIED</text>
+<path class="rule" d="M58,2399 H787"/>
+<text class="req" x="62" y="2422">GET /api/users</text>
+<text class="bl12" x="62" y="2442">hasRole('ADMIN') says no</text>
+<rect class="c4" x="666.1" y="2405" width="116.89999999999999" height="24" rx="12"/>
+<text class="c4t" x="724.5500000000001" y="2422" text-anchor="middle">403 Forbidden</text>
+<text class="logt" x="783" y="2442" text-anchor="end">▸ ACCESS_DENIED</text>
+<path class="rule" d="M58,2455 H787"/>
+<text class="req" x="62" y="2478">POST /api/posts/7/comments  (old token)</text>
+<text class="bl12" x="62" y="2498">JwtAuthenticationFilter: the token has expired</text>
+<rect class="c4" x="644.2" y="2461" width="138.8" height="24" rx="12"/>
+<text class="c4t" x="713.6" y="2478" text-anchor="middle">401 Unauthorized</text>
+<text class="logt" x="783" y="2498" text-anchor="end">▸ TOKEN_REJECTED</text>
+<path class="rule" d="M58,2511 H787"/>
+<text class="req" x="62" y="2534">POST /api/auth/login  (6th wrong password)</text>
+<text class="bl12" x="62" y="2554">LoginAttemptService: 5 failures within 15 min</text>
+<rect class="c9" x="607.7" y="2517" width="175.29999999999998" height="24" rx="12"/>
+<text class="c9t" x="695.35" y="2534" text-anchor="middle">429 Too Many Requests</text>
+<text class="logt" x="783" y="2554" text-anchor="end">▸ LOGIN_BLOCKED</text>
+<rect class="cardbox" x="825" y="2100" width="757" height="472" rx="12"/>
+<path class="band-author" d="M825,2112 A12,12 0 0 1 837,2100 H1570 A12,12 0 0 1 1582,2112 V2162 H825 Z"/>
+<text class="cardt" x="843" y="2130">AUTHOR  ben — manages his own posts</text>
+<text class="cards" x="843" y="2152">token roles: ["AUTHOR"] · owns post 12 · post 7 is claire's</text>
+<text class="req" x="843" y="2198">POST /api/posts</text>
+<text class="bl12" x="843" y="2218">hasAnyRole('AUTHOR', 'ADMIN'); author = uid from the token</text>
+<rect class="c2" x="1461.7" y="2181" width="102.3" height="24" rx="12"/>
+<text class="c2t" x="1512.8500000000001" y="2198" text-anchor="middle">201 Created</text>
+<path class="rule" d="M839,2231 H1568"/>
+<text class="req" x="843" y="2254">PUT /api/posts/12  {…, "version": 0}</text>
+<text class="bl12" x="843" y="2274">@ownership.isPostAuthor(12, authentication) → true</text>
+<rect class="c2" x="1498.2" y="2237" width="65.8" height="24" rx="12"/>
+<text class="c2t" x="1531.1000000000001" y="2254" text-anchor="middle">200 OK</text>
+<path class="rule" d="M839,2287 H1568"/>
+<text class="req" x="843" y="2310">PUT /api/posts/12  {…, "version": 0}  again</text>
+<text class="bl12" x="843" y="2330">the post is at version 1 now (optimistic locking)</text>
+<rect class="c4" x="1454.4" y="2293" width="109.6" height="24" rx="12"/>
+<text class="c4t" x="1509.2" y="2310" text-anchor="middle">409 Conflict</text>
+<path class="rule" d="M839,2343 H1568"/>
+<text class="req" x="843" y="2366">PUT /api/posts/7</text>
+<text class="bl12" x="843" y="2386">@ownership.isPostAuthor(7, …) → false: not his post</text>
+<rect class="c4" x="1447.1" y="2349" width="116.89999999999999" height="24" rx="12"/>
+<text class="c4t" x="1505.55" y="2366" text-anchor="middle">403 Forbidden</text>
+<text class="logt" x="1564" y="2386" text-anchor="end">▸ ACCESS_DENIED</text>
+<path class="rule" d="M839,2399 H1568"/>
+<text class="req" x="843" y="2422">PATCH /api/posts/12/publish</text>
+<text class="bl12" x="843" y="2442">his post → status PUBLISHED</text>
+<rect class="c2" x="1498.2" y="2405" width="65.8" height="24" rx="12"/>
+<text class="c2t" x="1531.1000000000001" y="2422" text-anchor="middle">200 OK</text>
+<path class="rule" d="M839,2455 H1568"/>
+<text class="req" x="843" y="2478">DELETE /api/posts/999</text>
+<text class="bl12" x="843" y="2498">Ownership: no such post (404 before "not yours")</text>
+<rect class="c4" x="1447.1" y="2461" width="116.89999999999999" height="24" rx="12"/>
+<text class="c4t" x="1505.55" y="2478" text-anchor="middle">404 Not Found</text>
+<path class="rule" d="M839,2511 H1568"/>
+<text class="req" x="843" y="2534">DELETE /api/posts/12</text>
+<text class="bl12" x="843" y="2554">his post → soft delete (row kept, deleted_at set)</text>
+<rect class="c2" x="1498.2" y="2517" width="65.8" height="24" rx="12"/>
+<text class="c2t" x="1531.1000000000001" y="2534" text-anchor="middle">200 OK</text>
+<rect class="cardbox" x="1606" y="2100" width="757" height="472" rx="12"/>
+<path class="band-admin" d="M1606,2112 A12,12 0 0 1 1618,2100 H2351 A12,12 0 0 1 2363,2112 V2162 H1606 Z"/>
+<text class="cardt" x="1624" y="2130">ADMIN — manages users</text>
+<text class="cards" x="1624" y="2152">token roles: ["ADMIN"] · his own id is 1</text>
+<text class="req" x="1624" y="2198">GET /api/users</text>
+<text class="bl12" x="1624" y="2218">hasRole('ADMIN')</text>
+<rect class="c2" x="2279.2" y="2181" width="65.8" height="24" rx="12"/>
+<text class="c2t" x="2312.1" y="2198" text-anchor="middle">200 OK</text>
+<path class="rule" d="M1620,2231 H2349"/>
+<text class="req" x="1624" y="2254">PUT /api/users/5/roles  {"roles":["AUTHOR"]}</text>
+<text class="bl12" x="1624" y="2274">hasRole('ADMIN') → then revokeAll(5)</text>
+<rect class="c2" x="2279.2" y="2237" width="65.8" height="24" rx="12"/>
+<text class="c2t" x="2312.1" y="2254" text-anchor="middle">200 OK</text>
+<text class="logt" x="2345" y="2274" text-anchor="end">▸ TOKENS_REVOKED</text>
+<path class="rule" d="M1620,2287 H2349"/>
+<text class="req" x="1624" y="2310">user 5, old token: GET /api/auth/me</text>
+<text class="bl12" x="1624" y="2330">jti on the blacklist: log in again to get the new role</text>
+<rect class="c4" x="2206.2" y="2293" width="138.8" height="24" rx="12"/>
+<text class="c4t" x="2275.6" y="2310" text-anchor="middle">401 Unauthorized</text>
+<text class="logt" x="2345" y="2330" text-anchor="end">▸ TOKEN_REJECTED</text>
+<path class="rule" d="M1620,2343 H2349"/>
+<text class="req" x="1624" y="2366">PUT /api/users/1/roles  {"roles":["READER"]}</text>
+<text class="bl12" x="1624" y="2386">his own account: he can't drop his own ADMIN role</text>
+<rect class="c4" x="2235.4" y="2349" width="109.6" height="24" rx="12"/>
+<text class="c4t" x="2290.2000000000003" y="2366" text-anchor="middle">409 Conflict</text>
+<path class="rule" d="M1620,2399 H2349"/>
+<text class="req" x="1624" y="2422">DELETE /api/users/5</text>
+<text class="bl12" x="1624" y="2442">hasRole('ADMIN') or @ownership.isSelf → soft delete</text>
+<rect class="c2" x="2279.2" y="2405" width="65.8" height="24" rx="12"/>
+<text class="c2t" x="2312.1" y="2422" text-anchor="middle">200 OK</text>
+<text class="logt" x="2345" y="2442" text-anchor="end">▸ TOKENS_REVOKED</text>
+<path class="rule" d="M1620,2455 H2349"/>
+<text class="req" x="1624" y="2478">GET /api/admin/security/report</text>
+<text class="bl12" x="1624" y="2498">URL rule: /api/admin/** → hasRole('ADMIN')</text>
+<rect class="c2" x="2279.2" y="2461" width="65.8" height="24" rx="12"/>
+<text class="c2t" x="2312.1" y="2478" text-anchor="middle">200 OK</text>
+<path class="rule" d="M1620,2511 H2349"/>
+<text class="req" x="1624" y="2534">DELETE /api/admin/security/users/5/sessions</text>
+<text class="bl12" x="1624" y="2554">log user 5 out everywhere; returns the count</text>
+<rect class="c2" x="2279.2" y="2517" width="65.8" height="24" rx="12"/>
+<text class="c2t" x="2312.1" y="2534" text-anchor="middle">200 OK</text>
+<text class="logt" x="2345" y="2554" text-anchor="end">▸ TOKENS_REVOKED</text>
+<text class="foot" x="40" y="2618">Classes: SecurityConfig · CorsConfig · JwtAuthenticationFilter · JwtService · AccessMonitorFilter · SecurityErrorHandler · GlobalExceptionHandler · Ownership · AuthService · LoginAttemptService · TokenBlacklist · ActiveSessionRegistry · GoogleLoginHandler · SecurityEventAspect · logback-spring.xml</text>
+</svg>

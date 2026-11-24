@@ -9,8 +9,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.Set;
 
-// The logged-in user as Spring Security sees it: a small, read-only copy of the User entity.
-// Not the entity itself, so no lazy loading or database session is needed after login.
 public record AuthUser(Long id, String username, String passwordHash, Set<RoleName> roles) implements UserDetails {
 
     public static AuthUser from(User user) {
@@ -32,7 +30,6 @@ public record AuthUser(Long id, String username, String passwordHash, Set<RoleNa
         return username;
     }
 
-    // a record prints every field by default; the password hash must never end up in a log
     @Override
     public String toString() {
         return "AuthUser[id=" + id + ", username=" + username + ", roles=" + roles + "]";

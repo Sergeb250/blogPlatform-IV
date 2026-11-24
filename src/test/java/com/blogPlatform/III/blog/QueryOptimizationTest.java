@@ -84,7 +84,6 @@ class QueryOptimizationTest {
     void cleanDatabase() {
         jdbc.update("DELETE FROM users");
         jdbc.update("DELETE FROM tags");
-        jdbc.update("DELETE FROM audit_logs");
     }
 
     @Test

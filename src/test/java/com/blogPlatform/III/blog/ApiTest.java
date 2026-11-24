@@ -2,7 +2,9 @@ package com.blogPlatform.III.blog;
 
 import com.blogPlatform.III.blog.entity.*;
 import com.blogPlatform.III.blog.repository.*;
+import com.blogPlatform.III.blog.security.AuthUser;
 import com.jayway.jsonpath.JsonPath;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,12 +12,11 @@ import org.springframework.cache.CacheManager;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.test.context.support.TestExecutionEvent;
-import org.springframework.security.test.context.support.WithUserDetails;
+import org.springframework.security.test.context.TestSecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -32,10 +33,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional
-// these tests check API behavior (paging, validation, ...) as a logged-in user who may call every endpoint
-// (AUTHOR + ADMIN); who may call what is SecurityConfigTest and RbacTest
-// "serge" is created in setUp(), so it is loaded (AppUserDetailsService) just before each test, not before setUp
-@WithUserDetails(value = "serge", setupBefore = TestExecutionEvent.TEST_EXECUTION)
 class ApiTest {
 
     @Autowired MockMvc mockMvc;
@@ -56,6 +53,11 @@ class ApiTest {
         cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
     }
 
+    @AfterEach
+    void logOut() {
+        TestSecurityContextHolder.clearContext();
+    }
+
     @BeforeEach
     void setUp() {
         serge = new User();
@@ -64,6 +66,11 @@ class ApiTest {
         serge.setPasswordHash("hash");
         serge.getRoles().addAll(roleRepository.findByNameIn(List.of(RoleName.AUTHOR, RoleName.ADMIN)));
         userRepository.save(serge);
+
+        // every request of the test runs as serge, as if it carried serge's token
+        AuthUser me = AuthUser.from(serge);
+        TestSecurityContextHolder.setAuthentication(
+                UsernamePasswordAuthenticationToken.authenticated(me, null, me.getAuthorities()));
 
         Tag java = new Tag();
         java.setName("java");
@@ -504,20 +511,6 @@ class ApiTest {
     }
 
     @Test
-    // the audit row is committed by its own transaction (REQUIRES_NEW). Under MySQL's REPEATABLE READ this test's
-    // transaction keeps the snapshot of its first read (loading the logged-in user), so it would never see the row.
-    @Transactional(isolation = Isolation.READ_COMMITTED)
-    void auditLog_recordsPostActions() throws Exception {
-        mockMvc.perform(patch("/api/posts/" + post.getId() + "/publish"))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(get("/api/audit-logs").param("size", "1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.content[0].action").value("PUBLISH_POST"))
-                .andExpect(jsonPath("$.data.content[0].entityId").value(post.getId()));
-    }
-
-    @Test
     void popularPosts_andTagUsage() throws Exception {
         mockMvc.perform(get("/api/posts/popular"))
                 .andExpect(status().isOk())
@@ -532,7 +525,6 @@ class ApiTest {
 
     @Test
     void everyList_isPagedByDefault() throws Exception {
-        // url, default size, default order
         String[][] lists = {
                 {"/api/users", "20", "username: ASC"},
                 {"/api/tags", "20", "name: ASC"},
@@ -544,7 +536,6 @@ class ApiTest {
                 {"/api/posts/popular", "10", "UNSORTED"},
                 {"/api/posts/" + post.getId() + "/comments", "10", "createdAt: ASC"},
                 {"/api/posts/" + post.getId() + "/reviews", "10", "createdAt: DESC"},
-                {"/api/audit-logs", "20", "createdAt: DESC"},
         };
         for (String[] list : lists) {
             mockMvc.perform(get(list[0]))
@@ -581,7 +572,6 @@ class ApiTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.pageable").exists());
 
-        // rankings have a fixed order
         for (String url : new String[]{"/api/posts/popular", "/api/posts/top-rated", "/api/tags/usage"}) {
             mockMvc.perform(get(url).param("sort", "title,asc"))
                     .andExpect(status().isBadRequest())

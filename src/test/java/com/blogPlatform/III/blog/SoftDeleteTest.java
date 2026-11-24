@@ -67,7 +67,6 @@ class SoftDeleteTest {
     void cleanDatabase() {
         jdbc.update("DELETE FROM users");
         jdbc.update("DELETE FROM tags");
-        jdbc.update("DELETE FROM audit_logs");
         cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
     }
 

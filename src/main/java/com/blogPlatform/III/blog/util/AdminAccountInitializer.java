@@ -13,11 +13,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-// Sign-up only ever creates READERs, so the first ADMIN is created here at startup.
-// Only while no live user has the ADMIN role, and only with a configured password: there is no default one.
+// sign-up only creates READERs, so the first ADMIN is created here, once, from app.admin.* (no default password)
 @Slf4j
 @Component
-// after the seeder (1), which only fills an EMPTY users table, and the FULLTEXT index (2)
 @Order(3)
 @RequiredArgsConstructor
 public class AdminAccountInitializer implements ApplicationRunner {

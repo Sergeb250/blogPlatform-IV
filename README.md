@@ -4,7 +4,7 @@ A REST API for a blogging platform: users write posts, add tags, comment and rev
 
 Phase IV makes it **secure and production-ready**: Spring Security with **JWT** login, **Google OAuth2** login,
 **role-based access** (`ADMIN`, `AUTHOR`, `READER`), **CORS**, a reasoned **CSRF** setup, **BCrypt** passwords, a
-**token blacklist** and session registry (hash maps), **brute-force protection** and a **security event log**.
+**token blacklist** (Caffeine cache) and session registry (hash maps), **brute-force protection** and a **security event log**.
 The data layer of Phase III (JPA queries, paging, transactions, caching, soft delete) is unchanged underneath.
 
 | | |
@@ -31,7 +31,7 @@ Database design: [`Docs/erd.png`](Docs/erd.png) · How it was built, phase by ph
   only their own comments, reviews and account; admins everything. The acting user always comes from the token.
 - **Stateless:** no server session, CSRF off for the API (with the reason), **CORS** allow-list for browser frontends.
 - **Passwords:** BCrypt (salted, slow on purpose). Sign-up always creates a `READER`; only an admin gives roles.
-- **Revocation:** logout puts the token on a **blacklist** (hash map, O(1) per request); a role, password or account
+- **Revocation:** logout puts the token on a **blacklist** (Caffeine cache, O(1) per request); a role, password or account
   change revokes **all** tokens of that user; admins see active sessions and can log a user out everywhere.
 - **Brute force:** 5 wrong passwords for a username from one IP within 15 minutes → **429** with `Retry-After`.
 - **Monitoring:** every security event is one `key=value` line in `logs/security.log`; an admin report shows
@@ -40,7 +40,7 @@ Database design: [`Docs/erd.png`](Docs/erd.png) · How it was built, phase by ph
 **Data access (Phase III)**
 - CRUD for users, posts, tags, comments and reviews, with strict validation and one standard JSON response shape.
 - Derived, JPQL, native and Specification queries; paging and sorting with a whitelist; a keyset (cursor) feed.
-- MySQL full-text search; transactions (optimistic locking, `REQUIRES_NEW` audit log, `REPEATABLE_READ` stats).
+- MySQL full-text search; transactions (optimistic locking, `rollbackFor` on a checked exception, `REPEATABLE_READ` stats).
 - Caffeine caching that is never stale after a write; soft delete everywhere.
 
 ---
@@ -66,13 +66,9 @@ Nothing to create by hand. The JDBC URL contains `createDatabaseIfNotExist=true`
 | `blog_test` | the automated tests (they never touch `blog_db`) |
 
 On startup the app also creates (once, then it checks and does nothing):
-- the three roles `ADMIN`, `AUTHOR`, `READER`, and it moves a Phase III `users.role` column into `user_roles`
-  (`util/RoleSchemaInitializer`)
+- the three roles `ADMIN`, `AUTHOR`, `READER` (`src/main/resources/data.sql`, run after Hibernate's tables)
 - unique keys that ignore soft-deleted rows (`util/SoftDeleteSchemaInitializer`)
 - a FULLTEXT index on `posts(title, content)` (`util/FullTextIndexInitializer`)
-
-> A Phase III database is migrated in place (the `role` column is copied, then dropped). Use a copy of `blog_db`
-> if you still want to run the Phase III code (`main` branch) on it.
 
 ### 3.2 Environment variables
 Secrets are read from environment variables; nothing secret is stored in the code.
@@ -106,6 +102,12 @@ export DB_PASSWORD=your-password
 export ADMIN_PASSWORD=Admin-pass1
 ```
 
+Or, instead of setting them in every terminal, put them in a **`.env`** file at the project root: copy
+[`.env.example`](.env.example) to `.env` and fill it in. `.env` is git-ignored, and `application.properties` imports
+it (`spring.config.import`), so every run started from the project folder (IntelliJ, `mvnw spring-boot:run`) reads it.
+A real environment variable with the same name still wins. `.env` holds only values; all the settings stay in
+`src/main/resources`.
+
 ### 3.3 Run
 ```bash
 ./mvnw spring-boot:run                                    # Windows: mvnw.cmd spring-boot:run
@@ -125,17 +127,11 @@ The API runs on **http://localhost:8080**.
 | *(none)* | `java -jar target/blog-0.0.1-SNAPSHOT.jar` | normal mode, Google login off |
 | `google` | `--spring.profiles.active=google` | Google login on (needs `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`) |
 | `dev` | `--spring.profiles.active=dev` | prints every SQL statement, Hibernate session metrics and the time of every service/repository call |
-| `seed` | `--spring.profiles.active=seed` | fills an **empty** `blog_db` with test data (see 3.5) |
 
 Profiles can be combined: `--spring.profiles.active=google,dev`.
 
-### 3.5 Test data (optional)
-```bash
-java -jar target/blog-0.0.1-SNAPSHOT.jar --spring.profiles.active=seed
-```
-This fills an **empty** `blog_db` in about 30 seconds with 1,000 users (`user1` … `user1000`, password
-`password123`; users 1–200 are AUTHORs, the rest READERs), 50,000 posts, 30 tags, 200,000 comments and ~100,000
-reviews. It uses a fixed random seed and does nothing if the database already has data.
+The app starts with an empty database: no test data is loaded. Sign up through the API, and set `ADMIN_PASSWORD`
+for the first admin account (see 3.2).
 
 ---
 
@@ -174,21 +170,29 @@ makes it invalid.
 
 A bad token is refused even on a public endpoint; another `Authorization` scheme (for example `Basic`) is ignored.
 
+**Sign-in page:** the root page, **http://localhost:8080/** (public, no token needed). It is one plain static file,
+`src/main/resources/static/index.html` (HTML + JavaScript, black and white, no Java behind it; its script only
+`fetch`es the API): a username / password form that calls `POST /api/auth/login`, and a *Continue with Google* button. After a successful login it asks `GET /api/auth/me` who
+the token belongs to and shows **Welcome, `<username>`** with a *Log out* button (`POST /api/auth/logout`). The token
+is kept in `sessionStorage`, so a refresh keeps you signed in until the tab is closed.
+
 ### 4.2 Google login (OAuth2)
 1. Google Cloud console → *APIs & Services → Credentials → Create credentials → OAuth client ID* (Web application).
    Authorized redirect URI: `http://localhost:8080/login/oauth2/code/google`.
 2. Give the app the client id and secret, either as environment variables (`GOOGLE_CLIENT_ID`,
-   `GOOGLE_CLIENT_SECRET`) or in a local file **`config/application-google.properties`** at the project root (the
-   folder is git-ignored; Spring Boot reads it automatically):
+   `GOOGLE_CLIENT_SECRET`) or in the local **`.env`** file at the project root (see 3.2):
    ```properties
-   spring.security.oauth2.client.registration.google.client-id=1234-abc.apps.googleusercontent.com
-   spring.security.oauth2.client.registration.google.client-secret=GOCSPX-...
+   GOOGLE_CLIENT_ID=1234-abc.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=GOCSPX-...
    ```
-3. Run with the `google` profile and open **http://localhost:8080/oauth2/authorization/google** in a browser.
+3. Run with the `google` profile, open **http://localhost:8080/** and click *Continue with Google*
+   (that button is a link to `/oauth2/authorization/google`).
 
 After Google, the app finds the user by the **verified** email (or creates a READER with provider `GOOGLE`, Google's
-id and no password) and answers with its own JWT, as JSON, or as a redirect to `OAUTH2_REDIRECT_URI` with
-`#access_token=...`. An unverified Google email is refused. Without the `google` profile the app runs normally and
+id and no password), issues its own JWT and sends the browser back to `/#access_token=...` (or to
+`OAUTH2_REDIRECT_URI`, e.g. another frontend); the sign-in page reads the token from the fragment, removes it from the
+address bar and shows *Welcome, `<username>`*. With `OAUTH2_REDIRECT_URI` set to an empty value the app answers with
+the JWT as JSON instead. An unverified Google email is refused. Without the `google` profile the app runs normally and
 Google login is simply off.
 
 ### 4.3 Access rules (RBAC)
@@ -208,7 +212,7 @@ The acting user always comes from the token: the bodies have no `authorId` / `us
 | `DELETE /api/tags/{id}` | 401 | 403 | 403 | ✅ |
 | `GET`, `PUT`, `DELETE` on `/api/users/{id}`, `GET /api/users/by-username/{username}` | 401 | own account | own account | ✅ |
 | `GET /api/users`, `PUT /api/users/{id}/roles` | 401 | 403 | 403 | ✅ |
-| `GET /api/audit-logs`, `GET /api/cache-stats`, `/api/admin/**` | 401 | 403 | 403 | ✅ |
+| `GET /api/cache-stats`, `/api/admin/**` | 401 | 403 | 403 | ✅ |
 
 - **401**: no token, or an expired / changed / malformed / revoked one. **403**: logged in, but not allowed.
 - *own* = the caller wrote it (or is that user). A post or comment that doesn't exist is **404**, not 403.
@@ -218,11 +222,11 @@ The acting user always comes from the token: the bodies have no `authorId` / `us
 - Every endpoint's exact rule (its `@PreAuthorize`) is also shown in Swagger UI, at the end of its description.
 
 ### 4.4 Logout and revoked tokens
-A JWT can't be deleted (the server keeps no copy), so the app keeps two in-memory hash maps:
+A JWT can't be deleted (the server keeps no copy), so the app keeps two things in memory, a Caffeine cache and a pair of hash maps:
 
-| Map | Key → value | Used for |
+| Store | Key → value | Used for |
 |---|---|---|
-| `TokenBlacklist` | token id (`jti`) → expiry | one O(1) lookup on every request; expired entries are purged every minute |
+| `TokenBlacklist` (Caffeine cache) | token id (`jti`) → expiry | one O(1) lookup on every request; each entry expires together with its token, so nothing is purged by hand and the cache has no size limit (an early eviction would un-revoke a token) |
 | `ActiveSessionRegistry` | token id → session (user, IP, requests, last seen), user id → token ids | "log this user out everywhere" without scanning all sessions |
 
 | Event | Effect |
@@ -256,8 +260,17 @@ Two different browser problems, often confused:
   nothing to abuse, and the API stays stateless (`csrf().disable()`, no session).
 - **When CSRF protection is needed:** an app that keeps the login in a **cookie** (server session, `JSESSIONID`) must
   turn Spring Security's CSRF filter on: every form carries a hidden `_csrf` token that a foreign page can't know,
-  and a POST without it gets 403. This API has no such cookie, so it doesn't need it. The only cookie it ever sets
-  (during the Google login round trip) is `HttpOnly` and `SameSite=Lax`.
+  and a POST without it gets 403. The JWT API has no such cookie, so it doesn't need it. The session cookie is
+  `HttpOnly` and `SameSite=Lax`.
+- **CSRF demo (form-based endpoint):** open **http://localhost:8080/csrf-demo**. It is a second filter chain
+  (`SecurityConfig.csrfDemoSecurity`, `@Order(1)`, only `/csrf-demo/**`) with a server session and CSRF **on**, and a
+  page ([CsrfDemoController](src/main/java/com/blogPlatform/III/blog/controller/CsrfDemoController.java)) with two forms:
+  - **Save note** carries the hidden `_csrf` token → the note is saved (303 back to the page);
+  - **Send without token** is what a forged form from another site looks like (it has the cookie, but not the token)
+    → `403 {"message": "Missing or invalid CSRF token"}`, logged as `ACCESS_DENIED ... reason=CSRF`.
+
+  A made-up token or the token of another session is refused too (`CsrfTest`). Every other URL stays on the
+  stateless JWT chain (`apiSecurity`, `@Order(2)`) with CSRF off.
 - **CORS does not stop CSRF:** a plain HTML form post is sent by the browser no matter what CORS says (CORS only hides
   the answer). That's why cookie-based apps need the CSRF token as well.
 
@@ -272,13 +285,17 @@ Retry-After: 899
 While blocked, even the right password gets 429. The owner on another network is not affected. A correct password
 resets the count. Change the limits with `app.security.login.max-failures` / `app.security.login.window`.
 
-**Security log** (`logs/security.log`, a new file every day, 30 days kept, git-ignored): one `key=value` line per event.
+**Security log** (`logs/security.log`): one `key=value` line per event.
+The events are written with **AOP**: [SecurityEventAspect](src/main/java/com/blogPlatform/III/blog/aop/SecurityEventAspect.java)
+runs around the methods where each event happens (`AuthService.login` returns or throws, `SecurityErrorHandler` answers
+401 / 403, `ActiveSessionRegistry.revokeAll` returns, ...), writes the line and counts the event for the report below,
+all in that one class. The login, token and access code itself has no logging calls.
 ```
 2026-11-18T11:44:34.298+02:00 WARN  LOGIN_FAILURE user=victim ip=203.0.113.7 failures_for_user=5
 2026-11-18T11:44:34.360+02:00 WARN  LOGIN_BLOCKED user=victim ip=203.0.113.7 retry_after_s=899
 2026-11-18T11:45:02.120+02:00 INFO  LOGIN_SUCCESS user=anna ip=10.0.0.4 method=PASSWORD
 2026-11-18T11:45:10.004+02:00 WARN  TOKEN_REJECTED ip=10.0.0.9 method=GET path=/api/auth/me reason="Token signature is not valid"
-2026-11-18T11:46:00.551+02:00 WARN  ACCESS_DENIED user=anna ip=10.0.0.4 method=GET path=/api/admin/security/report
+2026-11-18T11:46:00.551+02:00 WARN  ACCESS_DENIED user=anna ip=10.0.0.4 method=GET path=/api/admin/security/report reason=ROLE
 2026-11-18T11:47:12.900+02:00 INFO  TOKENS_REVOKED user_id=7 count=2 reason=ROLE_CHANGE
 ```
 Events: `LOGIN_SUCCESS` (`method=PASSWORD|GOOGLE`), `LOGIN_FAILURE`, `LOGIN_BLOCKED`, `GOOGLE_LOGIN_FAILURE`,
@@ -293,8 +310,24 @@ Select-String -Path logs\security.log -Pattern "LOGIN_BLOCKED|ACCESS_DENIED"
 
 **Report** (`GET /api/admin/security/report`, ADMIN): login successes / failures / blocks, rejected tokens, 401 and
 403 counts, active and revoked tokens, who is blocked now, **suspected brute force** (every username and IP with 5+
-failed logins) and the top 5 failing usernames, failing IPs, **endpoints** (`/api/posts/7` counts as
-`/api/posts/{id}`) and **users**. Counted since the last start.
+failed logins) and the top 5 **endpoints** (`/api/posts/7` counts as `/api/posts/{id}`) and **users**.
+Counted in memory since the last start; the two log files below are the permanent record.
+
+**Log files and their retention policy**, all set in [logback-spring.xml](src/main/resources/logback-spring.xml)
+(the `logs/` folder is git-ignored):
+
+| File | One line per | Example |
+|---|---|---|
+| `logs/security.log` | security event (above) | `WARN  LOGIN_FAILURE user=anna ip=10.0.0.4 failures_for_user=1` |
+| `logs/access.log` | `/api/` request | `API_REQUEST user=anna ip=10.0.0.4 method=GET path=/api/posts/7` |
+
+- **daily files:** at midnight today's file is renamed with its date (`security-2026-11-20.log`, `access-2026-11-20.log`)
+- **30 days kept** (`KEEP_DAYS`): older files are deleted
+- **size cap** (`TOTAL_SIZE_CAP`, 1 GB per log): when all files of one log grow past it, the oldest are deleted first
+- **clean at startup** (`cleanHistoryOnStart`): old files go even if the app was off at midnight
+- the access log stays out of the console (`additivity="false"`); the security log is shown there too
+
+Change `KEEP_DAYS` / `TOTAL_SIZE_CAP` at the top of the XML.
 
 ### 4.7 Hashing and data structures (DSA)
 
@@ -302,10 +335,9 @@ failed logins) and the top 5 failing usernames, failing IPs, **endpoints** (`/ap
 |---|---|---|
 | passwords | **BCrypt** (random salt, cost 10) | one-way and slow on purpose: a stolen database is expensive to crack |
 | token signature | **HMAC-SHA256** with `JWT_SECRET` | fast keyed hash: proves the token is ours and unchanged, on every request |
-| revoked tokens | `ConcurrentHashMap<jti, expiry>` | O(1) check per request, thread-safe, purged every minute |
+| revoked tokens | Caffeine `Cache<jti, expiry>` with a per-entry `Expiry` | O(1) check per request, thread-safe, every entry leaves when its token expires (no purge job) |
 | active sessions | two hash maps (by token id, by user id) | logout = O(1), "all tokens of a user" = one lookup |
 | failed logins | `ConcurrentHashMap<username|ip, Deque<time>>` | sliding window: old entries leave at the front, O(removed) |
-| top 5 in the report | min-heap (`PriorityQueue`) of size k | O(n log k) instead of sorting everything |
 
 ---
 
@@ -316,6 +348,7 @@ failed logins) and the top 5 failing usernames, failing IPs, **endpoints** (`/ap
 | Swagger UI (try every endpoint) | http://localhost:8080/swagger-ui.html |
 | OpenAPI JSON | http://localhost:8080/v3/api-docs |
 | Postman collection (every security rule, with tests) | [`postman/blog-platform-IV-security.postman_collection.json`](postman/blog-platform-IV-security.postman_collection.json) |
+| Postman collection "blogplatform4 api" (every endpoint, no tests) | [`postman/blogplatform4-api.postman_collection.json`](postman/blogplatform4-api.postman_collection.json) |
 
 **Swagger UI:** log in with `POST /api/auth/login`, copy `accessToken`, click **Authorize** and paste it. Endpoints
 without a lock are public; every description ends with its **Access** rule (the endpoint's `@PreAuthorize`).
@@ -326,6 +359,12 @@ without a lock are public; every description ends with its **Access** rule (the 
 3. Run the whole collection with the *Collection Runner*, in order: 38 requests in 7 folders (sign-up and JWT, bad
    tokens, roles and ownership, CORS, logout and revocation, brute force and the report, clean-up). Every run uses
    fresh usernames and deletes what it created.
+
+**Postman, by hand ("blogplatform4 api"):** 46 requests in 8 folders (auth, posts, comments, reviews, tags, users,
+admin and monitoring, CORS and tokens), no test scripts. Bodies and URLs hold real values from the existing `blog_db`
+(e.g. `user1` / `password123`, an AUTHOR, and its posts 603, 731, 962); only `baseUrl`, `token` and `adminToken` are
+variables. Log in, paste `data.accessToken` into `token` (and the admin's into `adminToken`), then send any request;
+each description gives its access rule and which row it uses.
 
 ### Response format
 Every endpoint answers with the same envelope:
@@ -374,7 +413,6 @@ Every endpoint answers with the same envelope:
 | GET / DELETE | `/api/tags/{id}` | |
 | GET | `/api/tags/usage` | posts per tag (native SQL), paged |
 | GET | `/api/stats` | counts from one snapshot (REPEATABLE_READ) |
-| GET | `/api/audit-logs` | ADMIN: every write attempt on posts |
 | GET | `/api/cache-stats` | ADMIN: cache hits / misses |
 | GET | `/api/admin/security/report` | ADMIN: security report (4.6) |
 | GET | `/api/admin/security/sessions` | ADMIN: active tokens |
@@ -401,7 +439,6 @@ GET /api/posts?status=PUBLISHED&tag=java&sort=title,asc
 | `GET /api/users` | 20 | username A → Z | `id, username, createdAt` |
 | `GET /api/tags` | 20 | name A → Z | `id, name` |
 | `GET /api/tags/usage` | 20 | most used first | none (ranking) |
-| `GET /api/audit-logs` | 20 | newest first | `id, action, createdAt` |
 | `GET /api/posts/feed` | 10 | newest first | cursor instead of pages (see below) |
 
 - **Response:** `data.content` plus `page`, `size`, `totalElements`, `totalPages`, `first`, `last`, `sort`.
@@ -464,7 +501,7 @@ transaction (a hit needs no DB connection), and `GET /api/cache-stats` (ADMIN) s
 ```bash
 ./mvnw test
 ```
-This runs **200 tests** (3 performance tests are skipped unless asked for): integration tests against the real MySQL
+This runs **210 tests**: integration tests against the real MySQL
 database `blog_test` with real signed JWTs, plus fast unit tests. MySQL must be running and `DB_PASSWORD` set.
 
 | Test class | What it checks |
@@ -473,20 +510,15 @@ database `blog_test` with real signed JWTs, plus fast unit tests. MySQL must be 
 | `JwtAuthTest` | sign-up, login, token header and claims, expired / changed / foreign-secret / unsigned / foreign-issuer / garbage tokens → 401 |
 | `RbacTest` | every role and ownership rule, roles from the token, `authorId` refused, role changes |
 | `CorsTest` | allowed origin, unknown origin 403, methods / headers, no CSRF token needed for the API |
+| `CsrfTest` | the /csrf-demo form: with its token it saves (303); without a token, a made-up one or another session's → 403; notes shown escaped; the API stays stateless |
 | `GoogleUserTest`, `GoogleLoginTest` | Google user rules (new / known email, username, no password), the redirect to Google, the success / failure handler, frontend redirect |
-| `TokenStoreTest`, `TokenRevocationTest` | blacklist and session maps (unit), logout, revoke on role / password / delete, admin sessions and forced logout |
+| `TokenStoreTest`, `TokenRevocationTest` | blacklist cache and session maps (unit), logout, revoke on role / password / delete, admin sessions and forced logout |
 | `LoginAttemptServiceTest`, `BruteForceTest` | the sliding window with a movable clock, 429 + `Retry-After` over HTTP, another IP not blocked |
-| `SecurityMonitorTest`, `SecurityEventsTest` | top-k, endpoint grouping, suspects, exact log lines, log injection, the admin report |
+| `SecurityEventAspectTest`, `SecurityEventsTest` | the top 5 lists, endpoint grouping, suspects, exact log lines, log injection, the admin report |
 | `OpenApiTest` | bearer scheme, public endpoints without lock, each endpoint's `@PreAuthorize` in the docs |
-| `RoleSchemaTest`, `PasswordHashingTest`, `AdminAccountInitializerTest` | roles table and Phase III migration, BCrypt, the first admin account |
+| `RoleSchemaTest`, `PasswordHashingTest`, `AdminAccountInitializerTest` | roles table and its startup insert, BCrypt, the first admin account |
 | `ApiTest` | every endpoint's behaviour (status codes, JSON shape, paging, strict validation) as a logged-in user |
 | `RepositoryTest`, `TransactionTest`, `QueryOptimizationTest`, `CacheTest`, `SoftDeleteTest`, `CustomValidatorsTest` | the Phase III data layer: queries, transactions, N+1 guard, caching, soft delete, custom validators |
-
-Performance tests (on a seeded `blog_db`) run only on purpose:
-```bash
-./mvnw test -Dtest=PerformanceTest -Dperf=true
-./mvnw test -Dtest=PagingStrategiesTest -Dperf=true
-```
 
 ---
 
@@ -494,30 +526,33 @@ Performance tests (on a seeded `blog_db`) run only on purpose:
 
 ```
 src/main/java/com/blogPlatform/III/blog
-├── aop/             PerformanceAspect: times every service / repository call
+├── aop/             PerformanceAspect: times every service / repository call;
+│                    SecurityEventAspect: writes the security log around the methods where the events happen,
+│                    counts them and builds the security report
 ├── config/          CacheConfig, ClockConfig, OpenApiConfig, PasswordConfig (BCrypt)
-├── controller/      REST endpoints, incl. AuthController and AdminSecurityController
+├── controller/      REST endpoints, incl. AuthController and AdminSecurityController; CsrfDemoController (the /csrf-demo page)
 ├── dto/request/     what clients send (records + Bean Validation)
 ├── dto/response/    what the API returns (ApiResponse, TokenResponse, SecurityReport, ...)
-├── entity/          User, Role, RoleName, AuthProvider, Post, Comment, Review, Tag, AuditLog
+├── entity/          User, Role, RoleName, AuthProvider, Post, Comment, Review, Tag
 ├── exception/       custom exceptions + GlobalExceptionHandler (incl. 401 / 403 / 429)
 ├── repository/      Spring Data JPA repositories
 ├── security/        SecurityConfig (the filter chain), SecurityErrorHandler, AuthUser,
-│   │                AppUserDetailsService, Ownership (@PreAuthorize helpers), CorsConfig
+│   │                Ownership (@PreAuthorize helpers), CorsConfig
 │   ├── jwt/         JwtService, JwtAuthenticationFilter, JwtProperties, IssuedToken
 │   ├── oauth2/      GoogleLoginHandler, OAuth2Properties
 │   ├── token/       TokenBlacklist, ActiveSessionRegistry, ActiveSession, TokenDetails
-│   └── monitor/     LoginAttemptService, SecurityMonitor, AccessMonitorFilter, TopK
-├── seed/            DataSeeder (profile "seed")
+│   └── monitor/     LoginAttemptService, AccessMonitorFilter
 ├── service/         business rules, @Transactional, @Cacheable; AuthService (login, tokens, logout)
 ├── specification/   JPA Specifications for the post filters
-├── util/            startup helpers: SchemaHelper, RoleSchemaInitializer, SoftDeleteSchemaInitializer,
-│                    FullTextIndexInitializer, MySqlFunctionContributor, AdminAccountInitializer
+├── util/            startup helpers: SoftDeleteSchemaInitializer, FullTextIndexInitializer,
+│                    MySqlFunctionContributor, AdminAccountInitializer
 └── validation/      custom constraints: @ValidPageable, @ValidCursor, @Username, @TagName
 src/main/resources
 ├── application.properties          app.jwt.*, app.admin.*, app.cors.*, app.security.login.*
 ├── application-google.properties   the Google client (profile "google")
-└── logback-spring.xml              logs/security.log
+├── data.sql                        the three roles, inserted at startup when missing
+├── static/index.html               the root page = sign-in page (form, Google button, welcome)
+└── logback-spring.xml              logs/security.log, logs/access.log (daily files, 30 days kept)
 ```
 
 ## 9. More documentation
@@ -525,4 +560,4 @@ src/main/resources
 | Document | Content |
 |---|---|
 | [`phases.md`](phases.md) | the nine phases of Phase IV, built from the user stories, with their tasks |
-| [`Docs/erd.png`](Docs/erd.png) | the database: users, roles, user_roles, posts, tags, comments, reviews, audit logs |
+| [`Docs/erd.png`](Docs/erd.png) | the database: users, roles, user_roles, posts, tags, comments, reviews |

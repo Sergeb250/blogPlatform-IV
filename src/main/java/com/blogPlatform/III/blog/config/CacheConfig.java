@@ -28,7 +28,7 @@ public class CacheConfig {
 
         manager.registerCustomCache(POSTS,           build(10_000, Duration.ofMinutes(10)));
         manager.registerCustomCache(USERS,           build(5_000,  Duration.ofMinutes(30)));
-        manager.registerCustomCache(TAGS,            build(100,    Duration.ofHours(1)));   // one entry per page
+        manager.registerCustomCache(TAGS,            build(100,    Duration.ofHours(1)));
         manager.registerCustomCache(POPULAR_POSTS,   build(20,     Duration.ofSeconds(60)));
         manager.registerCustomCache(TOP_RATED_POSTS, build(50,     Duration.ofSeconds(60)));
 

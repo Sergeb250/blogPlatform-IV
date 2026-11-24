@@ -13,7 +13,6 @@ import java.util.Optional;
 
 public interface ReviewRepository extends JpaRepository<Review, Long> {
 
-    // the reviewer is JOINed in, like the comment list: no extra query per review
     @EntityGraph(attributePaths = "user")
     Page<Review> findByPostId(Long postId, Pageable pageable);
 

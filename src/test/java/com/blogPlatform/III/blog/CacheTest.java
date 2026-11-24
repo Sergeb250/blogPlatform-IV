@@ -35,7 +35,6 @@ import static org.junit.jupiter.api.Assertions.*;
 @ActiveProfiles("test")
 class CacheTest {
 
-    // the defaults of the list endpoints
     static final PageRequest TAGS_A_TO_Z = PageRequest.of(0, 20, Sort.by("name"));
     static final PageRequest FIRST_10 = PageRequest.of(0, 10);
 
@@ -82,7 +81,6 @@ class CacheTest {
     void cleanUp() {
         jdbc.update("DELETE FROM users");
         jdbc.update("DELETE FROM tags");
-        jdbc.update("DELETE FROM audit_logs");
         cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
     }
 
@@ -113,7 +111,6 @@ class CacheTest {
 
         assertEquals(0, statistics.getPrepareStatementCount());
 
-        // another page is another cache entry
         tagService.getAll(PageRequest.of(1, 20, Sort.by("name")));
         assertTrue(statistics.getPrepareStatementCount() > 0);
     }

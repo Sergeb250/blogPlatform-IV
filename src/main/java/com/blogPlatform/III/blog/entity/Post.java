@@ -18,7 +18,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-
 @Entity
 @Table(name = "posts",
         indexes = {
@@ -62,7 +61,6 @@ public class Post {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // NULL = live; set when the post is deleted
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 

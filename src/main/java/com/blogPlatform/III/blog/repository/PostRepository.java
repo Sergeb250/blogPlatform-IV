@@ -5,6 +5,7 @@ import com.blogPlatform.III.blog.dto.response.PostRatingDto;
 import com.blogPlatform.III.blog.dto.response.PostSummaryDto;
 import com.blogPlatform.III.blog.entity.Post;
 import com.blogPlatform.III.blog.entity.PostStatus;
+import com.blogPlatform.III.blog.exception.ResourceNotFoundException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -22,7 +23,6 @@ public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificat
 
     boolean existsByAuthorIdAndTitle(Long authorId, String title);
 
-    // only the id: the ownership check (security/Ownership) does not need the whole post
     @Query("SELECT p.author.id FROM Post p WHERE p.id = :id")
     Optional<Long> findAuthorIdById(@Param("id") Long id);
 
@@ -40,10 +40,8 @@ public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificat
             nativeQuery = true)
     Page<Post> searchFullText(@Param("keyword") String keyword, Pageable pageable);
 
-    // 1. average the live reviews per post first (a subquery in FROM, read from the covering index
-    //    reviews(post_id, deleted_at, rating) only), 2. then join just the posts that qualify, for their titles.
-    // Joining posts first made MySQL read every post and every review row: ~1.7 s instead of ~0.2 s.
-    // A GROUP BY query can't be counted by Spring Data itself, so the count query is written out.
+    // reviews are averaged first (covering index), then joined to posts: ~0.2 s instead of ~1.7 s
+    // a GROUP BY query can't be counted by Spring Data, so the count query is written out
     @Query(value = """
             SELECT new com.blogPlatform.III.blog.dto.response.PostRatingDto(p.id, p.title, t.averageRating, t.reviewCount)
             FROM (SELECT r.postId AS postId, AVG(r.rating) AS averageRating, COUNT(r) AS reviewCount
@@ -94,4 +92,14 @@ public interface PostRepository extends JpaRepository<Post, Long>, JpaSpecificat
             countQuery = "SELECT COUNT(*) FROM posts WHERE status = 'PUBLISHED' AND deleted_at IS NULL",
             nativeQuery = true)
     Page<PopularPostView> findPopular(Pageable pageable);
+
+    default Post findOrThrow(Long id) {
+        return findById(id).orElseThrow(() -> new ResourceNotFoundException("Post " + id + " not found"));
+    }
+
+    default void requireExists(Long id) {
+        if (!existsById(id)) {
+            throw new ResourceNotFoundException("Post " + id + " not found");
+        }
+    }
 }

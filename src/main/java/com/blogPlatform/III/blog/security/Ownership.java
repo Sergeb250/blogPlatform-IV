@@ -9,8 +9,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-// "Is the caller the owner?" checks for @PreAuthorize, e.g. @ownership.isPostAuthor(#id, authentication).
-// A missing post / comment / review throws 404 here, so a caller learns "not found" before "not yours".
+// a missing post / comment / review throws 404 here, so a caller learns "not found" before "not yours"
 @Component("ownership")
 @RequiredArgsConstructor
 @Transactional(readOnly = true)

@@ -28,15 +28,13 @@ public class JwtService {
 
     public JwtService(JwtProperties properties) {
         this.properties = properties;
-        // HS256 needs a key of at least 256 bits: a shorter secret fails here, at startup, not at the first login
         this.key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(properties.secret()));
     }
 
     public IssuedToken issue(AuthUser user) {
-        // JWT times are whole seconds; cutting here keeps expiresAt equal to the "exp" claim
         Instant issuedAt = Instant.now().truncatedTo(ChronoUnit.SECONDS);
         Instant expiresAt = issuedAt.plus(properties.expiration());
-        // jti: a unique id per token, so one token can be revoked without touching the others
+
         String id = UUID.randomUUID().toString();
 
         String token = Jwts.builder()
@@ -52,7 +50,6 @@ public class JwtService {
         return new IssuedToken(token, id, issuedAt, expiresAt);
     }
 
-    // checks the signature, the expiry and the issuer; throws a JwtException subclass if any of them is wrong
     public Claims verify(String token) {
         return Jwts.parser()
                 .verifyWith(key)
@@ -62,7 +59,6 @@ public class JwtService {
                 .getPayload();
     }
 
-    // no database call: a valid signature proves we wrote these claims ourselves
     public AuthUser toAuthUser(Claims claims) {
         List<?> roles = claims.get(ROLES, List.class);
         Set<RoleName> roleNames = EnumSet.noneOf(RoleName.class);

@@ -13,7 +13,6 @@ import com.blogPlatform.III.blog.exception.ResourceNotFoundException;
 import com.blogPlatform.III.blog.repository.RoleRepository;
 import com.blogPlatform.III.blog.repository.UserRepository;
 import com.blogPlatform.III.blog.security.AuthUser;
-import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import com.blogPlatform.III.blog.security.token.ActiveSessionRegistry;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -38,26 +37,19 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final ActiveSessionRegistry sessions;
-    private final SecurityMonitor monitor;
 
     @Transactional
     public UserResponse register(UserRequest request) {
-        if (userRepository.existsByUsername(request.username())) {
-            throw new DuplicateResourceException("Username '" + request.username() + "' is already taken");
-        }
-        if (userRepository.existsByEmail(request.email())) {
-            throw new DuplicateResourceException("Email '" + request.email() + "' is already used");
-        }
+        checkUsernameFree(request.username());
+        checkEmailFree(request.email());
 
         User user = new User();
         copyRequestToUser(request, user);
-        // every new account starts as a reader: nobody can sign up as an author or admin
         user.getRoles().add(findRole(RoleName.READER));
         return UserResponse.from(userRepository.save(user));
     }
 
-    // After a Google login. A known email logs into that account (Google has verified the address, so it is
-    // the same person); an unknown one gets a new READER account without a password.
+    // Google has verified the email, so a known email logs into that account; an unknown one gets a new READER
     @Transactional
     public AuthUser findOrCreateGoogleUser(String googleId, String email) {
         User user = userRepository.findByEmail(email).orElseGet(() -> createGoogleUser(googleId, email));
@@ -70,7 +62,7 @@ public class UserService {
 
     @Cacheable(cacheNames = CacheConfig.USERS, key = "#id")
     public UserResponse getById(Long id) {
-        return UserResponse.from(findUser(id));
+        return UserResponse.from(userRepository.findOrThrow(id));
     }
 
     public UserResponse getByUsername(String username) {
@@ -84,30 +76,26 @@ public class UserService {
             evict = @CacheEvict(cacheNames = CacheConfig.POSTS, allEntries = true))
     @Transactional
     public UserResponse update(Long id, UserRequest request) {
-        User user = findUser(id);
+        User user = userRepository.findOrThrow(id);
 
-        if (!user.getUsername().equals(request.username())
-                && userRepository.existsByUsername(request.username())) {
-            throw new DuplicateResourceException("Username '" + request.username() + "' is already taken");
+        if (!user.getUsername().equals(request.username())) {
+            checkUsernameFree(request.username());
         }
-        if (!user.getEmail().equals(request.email())
-                && userRepository.existsByEmail(request.email())) {
-            throw new DuplicateResourceException("Email '" + request.email() + "' is already used");
+        if (!user.getEmail().equals(request.email())) {
+            checkEmailFree(request.email());
         }
 
         copyRequestToUser(request, user);
         UserResponse updated = UserResponse.from(userRepository.save(user));
-        // the password (and maybe the username) changed: every device must log in again with the new data
-        monitor.tokensRevoked(id, sessions.revokeAll(id), "PROFILE_CHANGE");
+        sessions.revokeAll(id, "PROFILE_CHANGE");
         return updated;
     }
 
-    // replaces all roles of the user. A token is signed with the roles it was made with, so the user's tokens
-    // are revoked: the next login gives a token with the new roles
+    // tokens carry the roles they were issued with, so they are revoked: the next login has the new roles
     @CachePut(cacheNames = CacheConfig.USERS, key = "#id")
     @Transactional
     public UserResponse updateRoles(Long id, Set<RoleName> roles, Long actingUserId) {
-        User user = findUser(id);
+        User user = userRepository.findOrThrow(id);
         // an admin who drops their own ADMIN role could leave the platform without any admin
         if (id.equals(actingUserId) && !roles.contains(RoleName.ADMIN)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "You cannot remove the ADMIN role from your own account");
@@ -115,24 +103,16 @@ public class UserService {
         user.getRoles().clear();
         user.getRoles().addAll(roleRepository.findByNameIn(roles));
         UserResponse updated = UserResponse.from(userRepository.save(user));
-        monitor.tokensRevoked(id, sessions.revokeAll(id), "ROLE_CHANGE");
+        sessions.revokeAll(id, "ROLE_CHANGE");
         return updated;
     }
 
     @CacheEvict(cacheNames = CacheConfig.USERS, key = "#id")
     @Transactional
     public void delete(Long id) {
-        User user = findUser(id);
-        // only this row: posts, comments and reviews keep their FKs and stay live.
-        // @SQLDelete on User: UPDATE users SET deleted_at = NOW(6) WHERE user_id = ?
+        User user = userRepository.findOrThrow(id);
         userRepository.delete(user);
-        // a deleted account's tokens would otherwise keep working until they expire
-        monitor.tokensRevoked(id, sessions.revokeAll(id), "ACCOUNT_DELETED");
-    }
-
-    private User findUser(Long id) {
-        return userRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User " + id + " not found"));
+        sessions.revokeAll(id, "ACCOUNT_DELETED");
     }
 
     private User createGoogleUser(String googleId, String email) {
@@ -146,7 +126,6 @@ public class UserService {
     }
 
     // maria.lopez@gmail.com -> "maria.lopez"; if taken -> "maria.lopez-2", "maria.lopez-3", ...
-    // (only the characters a username may have: letters, digits, . _ -)
     private String freeUsername(String email) {
         String base = email.substring(0, email.indexOf('@')).replaceAll("[^A-Za-z0-9._-]", "");
         if (base.length() < 3) {
@@ -161,6 +140,18 @@ public class UserService {
         return candidate;
     }
 
+    private void checkUsernameFree(String username) {
+        if (userRepository.existsByUsername(username)) {
+            throw new DuplicateResourceException("Username '" + username + "' is already taken");
+        }
+    }
+
+    private void checkEmailFree(String email) {
+        if (userRepository.existsByEmail(email)) {
+            throw new DuplicateResourceException("Email '" + email + "' is already used");
+        }
+    }
+
     private void copyRequestToUser(UserRequest request, User user) {
         user.setUsername(request.username());
         user.setEmail(request.email());
@@ -168,7 +159,6 @@ public class UserService {
     }
 
     private Role findRole(RoleName name) {
-        // the three roles are inserted at startup (RoleSchemaInitializer), so a miss means a broken database
         return roleRepository.findByName(name)
                 .orElseThrow(() -> new IllegalStateException("Role " + name + " is missing in the roles table"));
     }

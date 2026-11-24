@@ -13,7 +13,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-// the sliding window on its own, with a clock the test moves by hand (no waiting 15 minutes)
 class LoginAttemptServiceTest {
 
     final MovableClock clock = new MovableClock(Instant.parse("2026-11-18T12:00:00Z"));

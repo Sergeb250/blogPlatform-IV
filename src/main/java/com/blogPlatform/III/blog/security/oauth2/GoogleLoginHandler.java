@@ -4,7 +4,6 @@ import com.blogPlatform.III.blog.dto.response.ApiResponse;
 import com.blogPlatform.III.blog.dto.response.TokenResponse;
 import com.blogPlatform.III.blog.security.AuthUser;
 import com.blogPlatform.III.blog.security.SecurityErrorHandler;
-import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import com.blogPlatform.III.blog.service.AuthService;
 import com.blogPlatform.III.blog.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,8 +22,6 @@ import tools.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
-// Runs after the round trip to Google, when Spring Security already holds the Google user (email, "sub", ...).
-// The Google user becomes one of our users and gets our own JWT, exactly like after a password login.
 @Component
 @RequiredArgsConstructor
 public class GoogleLoginHandler implements AuthenticationSuccessHandler, AuthenticationFailureHandler {
@@ -34,7 +31,6 @@ public class GoogleLoginHandler implements AuthenticationSuccessHandler, Authent
     private final SecurityErrorHandler errorHandler;
     private final ObjectMapper objectMapper;
     private final OAuth2Properties properties;
-    private final SecurityMonitor monitor;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -46,17 +42,13 @@ public class GoogleLoginHandler implements AuthenticationSuccessHandler, Authent
 
         // only an address Google has checked may open (or create) the account with that email
         if (email == null || !Boolean.parseBoolean(String.valueOf(verified))) {
-            monitor.googleLoginFailed(request.getRemoteAddr(), "unverified email");
-            errorHandler.unauthorized(request, response, "Google login failed: the Google account has no verified email");
+            errorHandler.rejectGoogleLogin(request, response, "the Google account has no verified email");
             return;
         }
 
-        // getName() is Google's "sub": a stable id for the person, even if the Gmail address changes
         AuthUser user = userService.findOrCreateGoogleUser(google.getName(), email);
-        TokenResponse token = authService.issueToken(user, request.getRemoteAddr());
-        monitor.loginSucceeded(user.username(), request.getRemoteAddr(), "GOOGLE");
+        TokenResponse token = authService.loginWithGoogle(user, request.getRemoteAddr());
 
-        // the session only carried the OAuth2 "state" during the trip to Google; from now on the JWT is the proof
         HttpSession session = request.getSession(false);
         if (session != null) {
             session.invalidate();
@@ -73,11 +65,9 @@ public class GoogleLoginHandler implements AuthenticationSuccessHandler, Authent
         objectMapper.writeValue(response.getOutputStream(), ApiResponse.ok("Logged in with Google", token).getBody());
     }
 
-    // the user said "no" on Google's page, or the code / state coming back is wrong
     @Override
     public void onAuthenticationFailure(HttpServletRequest request, HttpServletResponse response,
                                         AuthenticationException exception) throws IOException {
-        monitor.googleLoginFailed(request.getRemoteAddr(), exception.getMessage());
-        errorHandler.unauthorized(request, response, "Google login failed: " + exception.getMessage());
+        errorHandler.rejectGoogleLogin(request, response, exception.getMessage());
     }
 }

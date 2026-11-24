@@ -16,8 +16,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// CORS = which web pages may call the API from JavaScript. The browser sends an "Origin" header, and before a
-// request with a token or a JSON body it first asks with a "preflight" (OPTIONS) request.
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -37,7 +35,6 @@ class CorsTest {
                 .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_METHODS, containsString("POST")))
                 .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS, containsString("Authorization")))
                 .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_MAX_AGE, "3600"))
-                // no cookies cross-origin: the token travels in a header
                 .andExpect(header().doesNotExist(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS));
     }
 

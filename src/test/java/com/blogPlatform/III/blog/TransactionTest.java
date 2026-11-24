@@ -41,7 +41,6 @@ class TransactionTest {
     @Autowired UserRepository userRepository;
     @Autowired PostRepository postRepository;
     @Autowired TagRepository tagRepository;
-    @Autowired AuditLogRepository auditLogRepository;
     @Autowired PlatformTransactionManager transactionManager;
     @Autowired JdbcTemplate jdbc;
 
@@ -69,11 +68,10 @@ class TransactionTest {
     void cleanDatabase() {
         jdbc.update("DELETE FROM users");
         jdbc.update("DELETE FROM tags");
-        jdbc.update("DELETE FROM audit_logs");
     }
 
     @Test
-    void createPost_failsHalfway_nothingIsSaved_butAuditStays() {
+    void createPost_failsHalfway_nothingIsSaved() {
         PostRequest request = new PostRequest("Half saved?", "Some content", null,
                 List.of("brand-new-tag", "x".repeat(60)));
 
@@ -81,7 +79,6 @@ class TransactionTest {
 
         assertEquals(0, postRepository.count());
         assertFalse(tagRepository.existsByName("brand-new-tag"));
-        assertEquals(1, auditLogRepository.findByAction("CREATE_POST").size());
     }
 
     @Test
@@ -93,11 +90,10 @@ class TransactionTest {
 
         assertEquals(0, postRepository.count());
         assertFalse(tagRepository.existsByName("money-tag"));
-        assertEquals(1, auditLogRepository.findByAction("CREATE_POST").size());
     }
 
     @Test
-    void createPost_success_savesPostTagsAndAudit() throws Exception {
+    void createPost_success_savesPostAndTags() throws Exception {
         PostResponse created = postService.create(author.getId(), new PostRequest("Good post", "Clean content",
                 PostStatus.PUBLISHED, List.of("java", "spring")));
 
@@ -105,7 +101,6 @@ class TransactionTest {
         assertTrue(tagRepository.existsByName("java"));
         assertTrue(tagRepository.existsByName("spring"));
         assertEquals(0L, created.version());
-        assertEquals(1, auditLogRepository.findByAction("CREATE_POST").size());
     }
 
     @Test

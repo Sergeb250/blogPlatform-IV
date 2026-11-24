@@ -2,7 +2,6 @@ package com.blogPlatform.III.blog.exception;
 
 import com.blogPlatform.III.blog.dto.response.ApiResponse;
 import com.blogPlatform.III.blog.security.SecurityErrorHandler;
-import com.blogPlatform.III.blog.security.monitor.SecurityMonitor;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +14,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BindException;
+import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
 import org.springframework.validation.method.ParameterErrors;
 import org.springframework.validation.method.ParameterValidationResult;
@@ -40,8 +40,6 @@ public class GlobalExceptionHandler {
 
     private static final String VALIDATION_FAILED = "Validation failed";
 
-    private final SecurityMonitor monitor;
-
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
         return ApiResponse.error(HttpStatus.NOT_FOUND, ex.getMessage(), request.getRequestURI());
@@ -64,7 +62,6 @@ public class GlobalExceptionHandler {
         return ApiResponse.error(HttpStatus.UNAUTHORIZED, "Invalid username or password", request.getRequestURI());
     }
 
-    // brute-force protection: 429, and Retry-After tells the client how many seconds to wait
     @ExceptionHandler(TooManyLoginAttemptsException.class)
     public ResponseEntity<ApiResponse<Void>> handleTooManyLogins(TooManyLoginAttemptsException ex,
                                                                  HttpServletRequest request) {
@@ -78,7 +75,6 @@ public class GlobalExceptionHandler {
     // Spring Security does, and without this method the catch-all below would answer 500
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Void>> handleAccessDenied(HttpServletRequest request) {
-        monitor.forbidden(request);
         return ApiResponse.error(HttpStatus.FORBIDDEN, SecurityErrorHandler.ACCESS_DENIED, request.getRequestURI());
     }
 
@@ -98,8 +94,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BindException.class)
     public ResponseEntity<ApiResponse<Void>> handleBodyValidation(BindException ex, HttpServletRequest request) {
         Map<String, String> errors = new LinkedHashMap<>();
-        ex.getFieldErrors().forEach(error -> addError(errors, error.getField(), messageOf(error)));
-        ex.getGlobalErrors().forEach(error -> addError(errors, error.getObjectName(), error.getDefaultMessage()));
+        addErrors(errors, ex);
         return ApiResponse.error(HttpStatus.BAD_REQUEST, VALIDATION_FAILED, errors, request.getRequestURI());
     }
 
@@ -109,8 +104,7 @@ public class GlobalExceptionHandler {
         Map<String, String> errors = new LinkedHashMap<>();
         for (ParameterValidationResult result : ex.getParameterValidationResults()) {
             if (result instanceof ParameterErrors objectErrors) {
-                objectErrors.getFieldErrors().forEach(error -> addError(errors, error.getField(), messageOf(error)));
-                objectErrors.getGlobalErrors().forEach(error -> addError(errors, error.getObjectName(), error.getDefaultMessage()));
+                addErrors(errors, objectErrors);
             } else {
                 String name = result.getMethodParameter().getParameterName();
                 result.getResolvableErrors().forEach(error -> addError(errors, name, error.getDefaultMessage()));
@@ -122,16 +116,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex,
                                                                 HttpServletRequest request) {
-        Map<String, String> errors = new LinkedHashMap<>();
-        addError(errors, ex.getName(), "invalid value '" + shorten(ex.getValue()) + "'");
+        Map<String, String> errors = Map.of(ex.getName(), "invalid value '" + shorten(ex.getValue()) + "'");
         return ApiResponse.error(HttpStatus.BAD_REQUEST, VALIDATION_FAILED, errors, request.getRequestURI());
     }
 
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiResponse<Void>> handleMissingParameter(MissingServletRequestParameterException ex,
                                                                     HttpServletRequest request) {
-        Map<String, String> errors = new LinkedHashMap<>();
-        addError(errors, ex.getParameterName(), "is required");
+        Map<String, String> errors = Map.of(ex.getParameterName(), "is required");
         return ApiResponse.error(HttpStatus.BAD_REQUEST, VALIDATION_FAILED, errors, request.getRequestURI());
     }
 
@@ -154,7 +146,6 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleOther(Exception ex, HttpServletRequest request) {
-        // Spring's own errors (unknown URL 404, wrong method 405, ...) already carry their status
         if (ex instanceof ErrorResponse errorResponse) {
             return ApiResponse.error(errorResponse.getStatusCode(), errorResponse.getBody().getDetail(),
                     request.getRequestURI());
@@ -167,6 +158,12 @@ public class GlobalExceptionHandler {
 
     private static void addError(Map<String, String> errors, String field, String message) {
         errors.merge(field, message, (first, second) -> first + "; " + second);
+    }
+
+    // field errors under the field's name, errors of the whole object (e.g. @AssertTrue) under the object's name
+    private static void addErrors(Map<String, String> errors, Errors source) {
+        source.getFieldErrors().forEach(error -> addError(errors, error.getField(), messageOf(error)));
+        source.getGlobalErrors().forEach(error -> addError(errors, error.getObjectName(), error.getDefaultMessage()));
     }
 
     private static String messageOf(FieldError error) {

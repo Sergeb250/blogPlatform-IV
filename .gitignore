@@ -38,5 +38,5 @@ explained/
 ### Security log files (logback-spring.xml) ###
 logs/
 
-### Local secrets (Google OAuth client): never committed ###
-/config/
+### Local secrets (Google OAuth client, admin password): never committed; .env.example is the template ###
+/.env

@@ -41,7 +41,6 @@ public class PostService {
     private final CommentRepository commentRepository;
     private final ReviewRepository reviewRepository;
     private final TagService tagService;
-    private final AuditService auditService;
     private final ContentModerator contentModerator;
 
     @Caching(evict = {
@@ -49,25 +48,13 @@ public class PostService {
             @CacheEvict(cacheNames = CacheConfig.POPULAR_POSTS, allEntries = true)})
     @Transactional(rollbackFor = ContentRejectedException.class)
     public PostResponse create(Long authorId, PostRequest request) throws ContentRejectedException {
-        auditService.record("CREATE_POST", null, "authorId=" + authorId + ", title=" + request.title());
+        User author = userRepository.findOrThrow(authorId);
 
-        User author = userRepository.findById(authorId)
-                .orElseThrow(() -> new ResourceNotFoundException("User " + authorId + " not found"));
-
-        if (postRepository.existsByAuthorIdAndTitle(author.getId(), request.title())) {
-            throw new DuplicateResourceException("This author already has a post titled '" + request.title() + "'");
-        }
+        checkTitleFree(author.getId(), request.title());
 
         Post post = new Post();
         post.setAuthor(author);
-        post.setTitle(request.title());
-        post.setContent(request.content());
-        if (request.status() != null) {
-            post.setStatus(request.status());
-        }
-        if (request.tags() != null) {
-            post.setTags(tagService.findOrCreate(request.tags()));
-        }
+        applyContent(post, request.title(), request.content(), request.status(), request.tags());
         Post saved = postRepository.save(post);
 
         // after the INSERT on purpose: a rejection rolls back the post and its new tags (rollbackFor)
@@ -87,7 +74,7 @@ public class PostService {
             spec = spec.and(PostSpecifications.hasAuthor(filter.author()));
         }
         if (StringUtils.hasText(filter.tag())) {
-            spec = spec.and(PostSpecifications.hasTag(filter.tag().trim().toLowerCase()));
+            spec = spec.and(PostSpecifications.hasTag(TagService.normalize(filter.tag())));
         }
         if (StringUtils.hasText(filter.keyword())) {
             spec = spec.and(PostSpecifications.matchesKeyword(filter.keyword()));
@@ -121,7 +108,7 @@ public class PostService {
 
     @Cacheable(cacheNames = CacheConfig.POSTS, key = "#id")
     public PostResponse getById(Long id) {
-        return PostResponse.from(findPost(id));
+        return PostResponse.from(postRepository.findOrThrow(id));
     }
 
     public PageResponse<PostResponse> searchByKeyword(String keyword, Pageable pageable) {
@@ -129,7 +116,6 @@ public class PostService {
         return PageResponse.from(page.map(PostResponse::from));
     }
 
-    // one cache entry per (minRating, page, size); the ranking has a fixed order, so no sort in the key
     @Cacheable(cacheNames = CacheConfig.TOP_RATED_POSTS,
             key = "#minRating + '-' + #pageable.pageNumber + '-' + #pageable.pageSize")
     public PageResponse<PostRatingDto> getTopRated(double minRating, Pageable pageable) {
@@ -140,7 +126,6 @@ public class PostService {
         return PageResponse.from(postRepository.findSummaries(pageable));
     }
 
-    // one cache entry per (page, size); the ranking has a fixed order, so no sort in the key
     @Cacheable(cacheNames = CacheConfig.POPULAR_POSTS, key = "#pageable.pageNumber + '-' + #pageable.pageSize")
     public PageResponse<PopularPostResponse> getPopular(Pageable pageable) {
         return PageResponse.from(postRepository.findPopular(pageable).map(PopularPostResponse::from));
@@ -154,27 +139,17 @@ public class PostService {
                     @CacheEvict(cacheNames = CacheConfig.TOP_RATED_POSTS, allEntries = true)})
     @Transactional(rollbackFor = ContentRejectedException.class)
     public PostResponse update(Long id, PostUpdateRequest request) throws ContentRejectedException {
-        auditService.record("UPDATE_POST", id, "title=" + request.title() + ", version=" + request.version());
-
-        Post post = findPost(id);
+        Post post = postRepository.findOrThrow(id);
 
         if (!post.getVersion().equals(request.version())) {
             throw new ObjectOptimisticLockingFailureException(Post.class, id);
         }
 
-        if (!post.getTitle().equals(request.title())
-                && postRepository.existsByAuthorIdAndTitle(post.getAuthor().getId(), request.title())) {
-            throw new DuplicateResourceException("This author already has a post titled '" + request.title() + "'");
+        if (!post.getTitle().equals(request.title())) {
+            checkTitleFree(post.getAuthor().getId(), request.title());
         }
 
-        post.setTitle(request.title());
-        post.setContent(request.content());
-        if (request.status() != null) {
-            post.setStatus(request.status());
-        }
-        if (request.tags() != null) {
-            post.setTags(tagService.findOrCreate(request.tags()));
-        }
+        applyContent(post, request.title(), request.content(), request.status(), request.tags());
         Post saved = postRepository.saveAndFlush(post);
 
         contentModerator.check(saved.getTitle(), saved.getContent());
@@ -186,8 +161,6 @@ public class PostService {
             evict = @CacheEvict(cacheNames = CacheConfig.POPULAR_POSTS, allEntries = true))
     @Transactional
     public PostResponse publish(Long id) {
-        auditService.record("PUBLISH_POST", id, "status=PUBLISHED");
-
         int updatedRows = postRepository.updateStatus(id, PostStatus.PUBLISHED, LocalDateTime.now());
         if (updatedRows == 0) {
             throw new ResourceNotFoundException("Post " + id + " not found");
@@ -201,20 +174,28 @@ public class PostService {
             @CacheEvict(cacheNames = CacheConfig.TOP_RATED_POSTS, allEntries = true)})
     @Transactional
     public void delete(Long id) {
-        auditService.record("DELETE_POST", id, "delete requested");
-
-        Post post = findPost(id);
-        // a soft delete is an UPDATE, so the database's ON DELETE CASCADE never fires:
-        // the post's comments and reviews are soft-deleted here, in the same transaction.
-        // Children first: Hibernate adds "deleted_at IS NULL" to the post join inside these UPDATEs.
+        Post post = postRepository.findOrThrow(id);
+        // a soft delete is an UPDATE, so ON DELETE CASCADE never fires: comments and reviews are soft-deleted here,
+        // children first, while the post still counts as live in their UPDATE joins
         commentRepository.softDeleteByPost(id);
         reviewRepository.softDeleteByPost(id);
-        // @SQLDelete on Post: UPDATE posts SET deleted_at = NOW(6) WHERE post_id = ? AND version = ?
         postRepository.delete(post);
     }
 
-    private Post findPost(Long id) {
-        return postRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Post " + id + " not found"));
+    private void checkTitleFree(Long authorId, String title) {
+        if (postRepository.existsByAuthorIdAndTitle(authorId, title)) {
+            throw new DuplicateResourceException("This author already has a post titled '" + title + "'");
+        }
+    }
+
+    private void applyContent(Post post, String title, String content, PostStatus status, List<String> tags) {
+        post.setTitle(title);
+        post.setContent(content);
+        if (status != null) {
+            post.setStatus(status);
+        }
+        if (tags != null) {
+            post.setTags(tagService.findOrCreate(tags));
+        }
     }
 }

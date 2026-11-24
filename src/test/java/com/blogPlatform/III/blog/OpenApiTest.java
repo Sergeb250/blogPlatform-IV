@@ -12,7 +12,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// the generated OpenAPI document: the login scheme, which endpoints are public, and each endpoint's access rule
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
@@ -27,7 +26,6 @@ class OpenApiTest {
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.type").value("http"))
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
                 .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.bearerFormat").value("JWT"))
-                // by default every operation needs the token
                 .andExpect(jsonPath("$.security[0].bearerAuth").isArray());
     }
 
@@ -53,7 +51,6 @@ class OpenApiTest {
                 .andExpect(jsonPath("$.paths['/api/posts/{id}'].put.description",
                         endsWith("**Access:** `hasRole('ADMIN') or (hasRole('AUTHOR') and @ownership.isPostAuthor(#id, authentication))`")))
                 .andExpect(jsonPath("$.paths['/api/users'].get.description", endsWith("**Access:** `hasRole('ADMIN')`")))
-                // a class-level rule counts too
                 .andExpect(jsonPath("$.paths['/api/admin/security/report'].get.description",
                         endsWith("**Access:** `hasRole('ADMIN')`")))
                 .andExpect(jsonPath("$.paths['/api/auth/me'].get.description", endsWith("**Access:** `isAuthenticated()`")));

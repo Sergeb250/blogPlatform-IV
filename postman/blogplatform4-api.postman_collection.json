@@ -1,0 +1,1530 @@
+{
+  "info": {
+    "name": "blogplatform4 api",
+    "description": "Every endpoint of the Blogging Platform IV API (Spring Security, JWT, Google OAuth2, RBAC). No tests: send the requests by hand.\n\nThe ids, usernames and bodies are real rows of blog_db:\n- user1 (id 1, password password123) is an AUTHOR. It wrote posts 603, 731 and 962, comments 2517 and 2520,\n  and review 3321. user201 (id 201) and user1000 (id 1000) are READERs.\n- Tags: 20 = linux (used), 33 = postman (unused).\n\nSetup:\n1. Start the app with an admin password, e.g.\n   $env:ADMIN_PASSWORD = \"Admin-pass1\"; ./mvnw spring-boot:run\n   The first start creates the admin account \"admin\". Use your own password in \"Log in as admin\" if it differs.\n2. Auth > Log in (user1). Copy data.accessToken from the response into the collection variable token.\n3. Auth > Log in as admin. Copy its data.accessToken into the collection variable adminToken.\n\nAuth: requests send \"Authorization: Bearer {{token}}\" (user1). Public requests send no token,\nadmin requests send {{adminToken}}. Each request's description says which roles may call it.\n\nUpdates send the version you read (0 for these rows today). After an update, the version goes up by one:\nread the row again and send the new version, or you get 409.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Sign up, log in with a password or with Google, and log out.",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "register"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"aline.uwase\",\n  \"email\": \"aline.uwase@amali.com\",\n  \"password\": \"secret123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Creates a READER. The password is stored as a BCrypt hash. username: 3-50 characters (letters, digits, . _ -); password: 8-100 characters with a letter and a digit. A second send gives 409 (username taken): change the username and email."
+          },
+          "response": []
+        },
+        {
+          "name": "Log in",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user1\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Logs in user1 (AUTHOR). Returns a JWT signed with HMAC-SHA256 (claims: sub, roles, iat, exp, iss, jti). Copy data.accessToken into the token variable. 401: wrong username or password. 429: 5 failed logins for this username from this IP in 15 min."
+          },
+          "response": []
+        },
+        {
+          "name": "Log in as admin",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"admin\",\n  \"password\": \"Admin-pass1\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. The password is the ADMIN_PASSWORD you started the app with. Copy data.accessToken into the adminToken variable."
+          },
+          "response": []
+        },
+        {
+          "name": "Current user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Any logged-in user (READER, AUTHOR or ADMIN). The user of the token. 401: no token, or an expired, changed or revoked one."
+          },
+          "response": []
+        },
+        {
+          "name": "Log out",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Any logged-in user (READER, AUTHOR or ADMIN). Revokes this token (in-memory blacklist): from now on it gets 401 \"revoked\". Other tokens of the same user keep working. Log in again for a new token."
+          },
+          "response": []
+        },
+        {
+          "name": "Google login (open in a browser)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/oauth2/authorization/google",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "oauth2",
+                "authorization",
+                "google"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Start the app with the google profile (--spring.profiles.active=google, GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET set). Open this URL in a browser, not in Postman: it redirects to Google. After the login the app saves the Google user (role READER) and answers with a JWT, as JSON or in the #access_token fragment of OAUTH2_REDIRECT_URI."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Posts",
+      "description": "Anyone reads posts; AUTHOR and ADMIN write them; an author changes only their own posts.",
+      "item": [
+        {
+          "name": "Create a post",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Securing a Spring Boot API with JWT\",\n  \"content\": \"How the filter chain reads the bearer token, checks its signature and puts the user and roles in the security context.\",\n  \"status\": \"DRAFT\",\n  \"tags\": [\n    \"java\",\n    \"spring\",\n    \"security\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "AUTHOR or ADMIN. The author is the user of the token. status: DRAFT (default) or PUBLISHED; up to 10 tags, missing tags are created. 403: READER. 409: you already have a post with this title."
+          },
+          "response": []
+        },
+        {
+          "name": "List posts (filters)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PUBLISHED",
+                  "disabled": true,
+                  "description": "DRAFT or PUBLISHED"
+                },
+                {
+                  "key": "author",
+                  "value": "user1",
+                  "disabled": true,
+                  "description": "author username"
+                },
+                {
+                  "key": "tag",
+                  "value": "linux",
+                  "disabled": true,
+                  "description": "tag name"
+                },
+                {
+                  "key": "keyword",
+                  "value": "docker",
+                  "disabled": true,
+                  "description": "whole word in title or content, 3-100 characters"
+                },
+                {
+                  "key": "from",
+                  "value": "2025-01-01",
+                  "disabled": true,
+                  "description": "created on or after (yyyy-MM-dd)"
+                },
+                {
+                  "key": "to",
+                  "value": "2026-12-31",
+                  "disabled": true,
+                  "description": "created on or before (yyyy-MM-dd)"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "page number, starts at 0"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "1-100"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt,desc",
+                  "disabled": true,
+                  "description": "field,asc|desc"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. All filters are optional (tick them in Params). Sort fields: id, title, status, createdAt, updatedAt."
+          },
+          "response": []
+        },
+        {
+          "name": "Feed (cursor paging)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/feed?size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "feed"
+              ],
+              "query": [
+                {
+                  "key": "cursor",
+                  "value": "",
+                  "disabled": true,
+                  "description": "nextCursor of the previous response; empty = newest"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "1-100"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Newest posts first, keyset paging. For the next window, tick cursor and paste data.nextCursor."
+          },
+          "response": []
+        },
+        {
+          "name": "Search",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/search?keyword=docker&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "docker",
+                  "description": "word to search for, 3-100 characters"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "page number, starts at 0"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "1-100"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Full-text search in title and content, best match first."
+          },
+          "response": []
+        },
+        {
+          "name": "Top rated",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/top-rated?minRating=4&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "top-rated"
+              ],
+              "query": [
+                {
+                  "key": "minRating",
+                  "value": "4",
+                  "description": "minimum average rating (1-5)"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "page number, starts at 0"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "1-100"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed."
+          },
+          "response": []
+        },
+        {
+          "name": "Summaries",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/summaries?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "summaries"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "page number, starts at 0"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "1-100"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt,desc",
+                  "disabled": true,
+                  "description": "field,asc|desc"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. id, title, author, status and comment count only. Sort fields: id, title, createdAt."
+          },
+          "response": []
+        },
+        {
+          "name": "Popular",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/popular?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "popular"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "page number, starts at 0"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "1-100"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Published posts ranked by comments, reviews and average rating."
+          },
+          "response": []
+        },
+        {
+          "name": "Get a post",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/603",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "603"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Post 603 by user1 (\"Post 603: notes about angular\"). 404: post not found."
+          },
+          "response": []
+        },
+        {
+          "name": "Update a post",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/603",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "603"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Post 603: notes about angular (updated)\",\n  \"content\": \"Components, services and routing in a small Angular app.\",\n  \"status\": \"PUBLISHED\",\n  \"tags\": [\n    \"angular\",\n    \"typescript\"\n  ],\n  \"version\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "ADMIN, or the AUTHOR who wrote the post (user1). version: the one you read (409 if it is old). 403: anyone else."
+          },
+          "response": []
+        },
+        {
+          "name": "Publish a post",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/731",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "731"
+              ]
+            },
+            "description": "ADMIN, or the AUTHOR who wrote the post. Post 731 is a DRAFT by user1."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a post",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/962",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "962"
+              ]
+            },
+            "description": "ADMIN, or the AUTHOR who wrote the post. Post 962 is by user1. Soft delete: the row stays, marked deleted, and the post is no longer shown."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Comments",
+      "description": "Anyone reads comments; any logged-in user writes one; only its writer or an admin changes it.",
+      "item": [
+        {
+          "name": "Add a comment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/603/comments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "603",
+                "comments"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Clear and to the point, thanks for the routing example.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Any logged-in user (READER, AUTHOR or ADMIN)."
+          },
+          "response": []
+        },
+        {
+          "name": "List comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/603/comments?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "603",
+                "comments"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "page number, starts at 0"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "1-100"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt,asc",
+                  "disabled": true,
+                  "description": "field,asc|desc"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Sort fields: id, createdAt."
+          },
+          "response": []
+        },
+        {
+          "name": "Count comments",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/603/comments/count",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "603",
+                "comments",
+                "count"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed."
+          },
+          "response": []
+        },
+        {
+          "name": "Update a comment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/34090/comments/2517",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "34090",
+                "comments",
+                "2517"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Great post, thanks! The second example helped most.\",\n  \"version\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "ADMIN, or the user who wrote the comment. Comment 2517 is user1's, on post 34090. version: the one you read (409 if it is old)."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a comment",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/26918/comments/2520",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "26918",
+                "comments",
+                "2520"
+              ]
+            },
+            "description": "ADMIN, or the user who wrote the comment. Comment 2520 is user1's, on post 26918."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Reviews",
+      "description": "Anyone reads reviews; any logged-in user rates a post; only its writer or an admin deletes it.",
+      "item": [
+        {
+          "name": "Add a review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/603/reviews",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "603",
+                "reviews"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"rating\": 5,\n  \"reviewText\": \"Very helpful, the examples are easy to follow.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Any logged-in user (READER, AUTHOR or ADMIN). rating: 1-5; reviewText is optional. One review per user and post: a second send gives 409."
+          },
+          "response": []
+        },
+        {
+          "name": "List reviews",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/603/reviews?page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "603",
+                "reviews"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "page number, starts at 0"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "1-100"
+                },
+                {
+                  "key": "sort",
+                  "value": "createdAt,desc",
+                  "disabled": true,
+                  "description": "field,asc|desc"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Sort fields: id, rating, createdAt."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a review",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/1634/reviews/3321",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts",
+                "1634",
+                "reviews",
+                "3321"
+              ]
+            },
+            "description": "ADMIN, or the user who wrote the review. Review 3321 is user1's, on post 1634."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tags",
+      "description": "Anyone reads tags; AUTHOR and ADMIN create them; only ADMIN deletes them.",
+      "item": [
+        {
+          "name": "Create a tag",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/tags",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tags"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"jwt\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "AUTHOR or ADMIN. 403: READER. 409: the tag already exists."
+          },
+          "response": []
+        },
+        {
+          "name": "List tags",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tags?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tags"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "page number, starts at 0"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "1-100"
+                },
+                {
+                  "key": "sort",
+                  "value": "name,asc",
+                  "disabled": true,
+                  "description": "field,asc|desc"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Sort fields: id, name."
+          },
+          "response": []
+        },
+        {
+          "name": "Tag usage",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tags/usage?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tags",
+                "usage"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "page number, starts at 0"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "1-100"
+                }
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. How many posts use each tag, most used first."
+          },
+          "response": []
+        },
+        {
+          "name": "Get a tag",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tags/20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tags",
+                "20"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "Public: no token needed. Tag 20 is linux."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a tag",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/tags/33",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "tags",
+                "33"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "ADMIN only: sends {{adminToken}}. Tag 33 is postman, used by no post."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "A user sees and changes only their own account; ADMIN sees all and sets roles.",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users?page=0&size=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "page number, starts at 0"
+                },
+                {
+                  "key": "size",
+                  "value": "20",
+                  "description": "1-100"
+                },
+                {
+                  "key": "sort",
+                  "value": "username,asc",
+                  "disabled": true,
+                  "description": "field,asc|desc"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "ADMIN only: sends {{adminToken}}. Sort fields: id, username, createdAt."
+          },
+          "response": []
+        },
+        {
+          "name": "Get a user",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1"
+              ]
+            },
+            "description": "ADMIN, or the user themselves. User 1 is user1, the token's own account. 403: someone else's account (try /api/users/2)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get a user by username",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/by-username/user1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "by-username",
+                "user1"
+              ]
+            },
+            "description": "ADMIN, or the user themselves."
+          },
+          "response": []
+        },
+        {
+          "name": "Update a user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"user1\",\n  \"email\": \"user1@amali.com\",\n  \"password\": \"password123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "ADMIN, or the user themselves. Roles cannot be changed here. Moves user1 to an @amali.com email; the username stays user1 so \"Log in\" keeps working. A new password revokes the user's tokens: log in again."
+          },
+          "response": []
+        },
+        {
+          "name": "Change roles",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/201/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "201",
+                "roles"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roles\": [\n    \"AUTHOR\",\n    \"READER\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "ADMIN only: sends {{adminToken}}. user201 (a READER) becomes an AUTHOR too. The complete new list of roles: ADMIN, AUTHOR, READER. The user logs in again to get a token with the new roles."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete a user",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/1000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "1000"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "ADMIN, or the user themselves. Sent as the admin: user1000 is a READER. Soft delete."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Admin and monitoring",
+      "description": "Security events, active sessions and cache statistics.",
+      "item": [
+        {
+          "name": "Security report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/security/report",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "security",
+                "report"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "ADMIN only: sends {{adminToken}}. Login successes and failures, brute-force suspects, token use and access counts."
+          },
+          "response": []
+        },
+        {
+          "name": "Active sessions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/security/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "security",
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "ADMIN only: sends {{adminToken}}. Tokens that are issued, not expired and not revoked."
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke a user's sessions",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/security/users/1/sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "admin",
+                "security",
+                "users",
+                "1",
+                "sessions"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "ADMIN only: sends {{adminToken}}. Blacklists every active token of user1. Returns how many were revoked. user1 then logs in again."
+          },
+          "response": []
+        },
+        {
+          "name": "Cache statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/cache-stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "cache-stats"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "ADMIN only: sends {{adminToken}}."
+          },
+          "response": []
+        },
+        {
+          "name": "Platform statistics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/stats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "stats"
+              ]
+            },
+            "description": "Any logged-in user (READER, AUTHOR or ADMIN)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "CORS and tokens",
+      "description": "Requests that show the CORS policy and how bad tokens are refused.",
+      "item": [
+        {
+          "name": "CORS preflight from the frontend",
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://localhost:3000"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "POST"
+              },
+              {
+                "key": "Access-Control-Request-Headers",
+                "value": "Authorization, Content-Type"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "An allowed origin (CORS_ALLOWED_ORIGINS, default http://localhost:3000): 200 with the Access-Control-Allow-* headers."
+          },
+          "response": []
+        },
+        {
+          "name": "CORS preflight from an unknown origin",
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "http://evil.example"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "POST"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "posts"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "An origin that is not allowed: 403, no Access-Control-Allow-Origin header."
+          },
+          "response": []
+        },
+        {
+          "name": "No token on a protected endpoint",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "401 Unauthorized."
+          },
+          "response": []
+        },
+        {
+          "name": "Malformed token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer not.a.jwt"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            },
+            "description": "401 Unauthorized. Paste a token with a changed payload or an expired one to see the same answer."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

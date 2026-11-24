@@ -21,7 +21,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// the whole flow over HTTP: 5 wrong passwords -> 429 with Retry-After
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("test")

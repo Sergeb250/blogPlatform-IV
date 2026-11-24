@@ -1,9 +1,12 @@
 package com.blogPlatform.III.blog;
 
+import com.blogPlatform.III.blog.dto.request.LoginRequest;
 import com.blogPlatform.III.blog.dto.request.UserRequest;
+import com.blogPlatform.III.blog.dto.response.TokenResponse;
 import com.blogPlatform.III.blog.dto.response.UserResponse;
 import com.blogPlatform.III.blog.entity.RoleName;
 import com.blogPlatform.III.blog.security.AuthUser;
+import com.blogPlatform.III.blog.service.AuthService;
 import com.blogPlatform.III.blog.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -12,23 +15,22 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.cache.CacheManager;
 import org.springframework.http.MediaType;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
-import java.util.stream.Collectors;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -42,7 +44,7 @@ class SecurityConfigTest {
     @Autowired MockMvc mockMvc;
     @Autowired CacheManager cacheManager;
     @Autowired UserService userService;
-    @Autowired AuthenticationManager authenticationManager;
+    @Autowired AuthService authService;
 
     @BeforeEach
     void clearCaches() {
@@ -57,6 +59,24 @@ class SecurityConfigTest {
         // 404 (not 401): the request got past security and the controller looked for the post
         mockMvc.perform(get("/api/posts/999999/comments")).andExpect(status().isNotFound());
         mockMvc.perform(get("/v3/api-docs")).andExpect(status().isOk());
+    }
+
+    @Test
+    void rootPage_isTheSignInPage_isPublic_andHasTheFormAndTheGoogleButton() throws Exception {
+        // no token, no login: anyone may open it. MockMvc does not follow Spring Boot's forward from / to the file
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(forwardedUrl("index.html"));
+
+        mockMvc.perform(head("/")).andExpect(status().isOk());
+
+        mockMvc.perform(get("/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_HTML))
+                .andExpect(content().string(containsString("<title>Blog Platform</title>")))
+                .andExpect(content().string(containsString("id=\"form\"")))
+                .andExpect(content().string(containsString("href=\"/oauth2/authorization/google\"")))
+                .andExpect(content().string(containsString("Continue with Google")));
     }
 
     @Test
@@ -91,7 +111,7 @@ class SecurityConfigTest {
 
     @Test
     void protectedReads_withoutLogin_are401() throws Exception {
-        for (String url : new String[]{"/api/users", "/api/stats", "/api/audit-logs", "/api/cache-stats"}) {
+        for (String url : new String[]{"/api/users", "/api/stats", "/api/cache-stats"}) {
             mockMvc.perform(get(url)).andExpect(status().isUnauthorized());
         }
     }
@@ -119,19 +139,20 @@ class SecurityConfigTest {
     }
 
     @Test
-    void authenticationManager_acceptsTheRightPassword() {
+    void login_acceptsTheRightPassword() {
         userService.register(new UserRequest("ben", "ben@test.com", "secret123"));
 
-        Authentication result = authenticate("ben", "secret123");
+        TokenResponse token = login("ben", "secret123");
 
-        assertTrue(result.isAuthenticated());
-        AuthUser ben = (AuthUser) result.getPrincipal();
-        assertEquals("ben", ben.username());
-        assertEquals(Set.of(RoleName.READER), ben.roles());
-        // ROLE_READER: what hasRole('READER') looks for.
-        // FACTOR_PASSWORD: added by Spring Security 7, it records HOW the user proved who they are
-        assertEquals(Set.of("ROLE_READER", "FACTOR_PASSWORD"),
-                result.getAuthorities().stream().map(GrantedAuthority::getAuthority).collect(Collectors.toSet()));
+        assertEquals("ben", token.username());
+        assertEquals(Set.of(RoleName.READER), token.roles());
+        assertFalse(token.accessToken().isBlank());
+    }
+
+    @Test
+    void authUser_neverPrintsThePasswordHash() {
+        AuthUser ben = new AuthUser(1L, "ben", "$2a$10$abcdefghijklmnopqrstuv", Set.of(RoleName.READER));
+
         assertFalse(ben.toString().contains("$2a$"), "the password hash must never be printed");
     }
 
@@ -140,9 +161,9 @@ class SecurityConfigTest {
         userService.register(new UserRequest("ben", "ben@test.com", "secret123"));
 
         BadCredentialsException wrongPassword = assertThrows(BadCredentialsException.class,
-                () -> authenticate("ben", "wrong-password1"));
+                () -> login("ben", "wrong-password1"));
         BadCredentialsException unknownUser = assertThrows(BadCredentialsException.class,
-                () -> authenticate("nobody", "secret123"));
+                () -> login("nobody", "secret123"));
 
         // same exception, same message: the caller can't tell which usernames exist
         assertEquals(wrongPassword.getMessage(), unknownUser.getMessage());
@@ -153,7 +174,7 @@ class SecurityConfigTest {
         UserResponse ben = userService.register(new UserRequest("ben", "ben@test.com", "secret123"));
         userService.delete(ben.id());
 
-        assertThrows(BadCredentialsException.class, () -> authenticate("ben", "secret123"));
+        assertThrows(BadCredentialsException.class, () -> login("ben", "secret123"));
     }
 
     @Test
@@ -166,7 +187,8 @@ class SecurityConfigTest {
         assertNull(result.getRequest().getSession(false));
     }
 
-    private Authentication authenticate(String username, String password) {
-        return authenticationManager.authenticate(UsernamePasswordAuthenticationToken.unauthenticated(username, password));
+    // its own IP (a documentation address), so failed logins of other test classes never block these
+    private TokenResponse login(String username, String password) {
+        return authService.login(new LoginRequest(username, password), "203.0.113.7");
     }
 }

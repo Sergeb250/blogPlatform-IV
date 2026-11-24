@@ -14,9 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-// Every token in use, in memory. Two maps, so each question is one lookup instead of a scan of all sessions:
-//   sessionsByTokenId: "which session is this token?"        (every request, logout)
-//   tokenIdsByUser:    "which tokens does this user have?"   (role change, password change, delete)
+// Two maps, so each question is one lookup: session by token id (every request), token ids by user (revoke all)
 @Component
 @RequiredArgsConstructor
 public class ActiveSessionRegistry {
@@ -30,8 +28,7 @@ public class ActiveSessionRegistry {
         add(new ActiveSession(token.id(), user.id(), user.username(), token.issuedAt(), token.expiresAt(), ip));
     }
 
-    // every request with a valid token. A token made before a restart is unknown here, so it is added the first
-    // time it is seen.
+    // a token issued before a restart is unknown here, so it is added the first time it is seen
     public void recordRequest(Claims claims, String ip) {
         ActiveSession session = sessionsByTokenId.get(claims.getId());
         if (session == null) {
@@ -42,7 +39,6 @@ public class ActiveSessionRegistry {
         session.recordRequest(ip, Instant.now());
     }
 
-    // logout: this token only
     public void revoke(String tokenId, Instant expiresAt) {
         blacklist.revoke(tokenId, expiresAt);
         ActiveSession session = sessionsByTokenId.remove(tokenId);
@@ -51,8 +47,8 @@ public class ActiveSessionRegistry {
         }
     }
 
-    // "log out everywhere": every token of the user. Returns how many were revoked.
-    public int revokeAll(Long userId) {
+    // the reason is only for the TOKENS_REVOKED log line (SecurityEventAspect)
+    public int revokeAll(Long userId, String reason) {
         Set<String> tokenIds = tokenIdsByUser.remove(userId);
         if (tokenIds == null) {
             return 0;
@@ -93,7 +89,6 @@ public class ActiveSessionRegistry {
 
     private void add(ActiveSession session) {
         sessionsByTokenId.put(session.getTokenId(), session);
-        // a thread-safe Set per user: two logins of the same user can happen at the same time
         tokenIdsByUser.computeIfAbsent(session.getUserId(), id -> ConcurrentHashMap.newKeySet()).add(session.getTokenId());
     }
 

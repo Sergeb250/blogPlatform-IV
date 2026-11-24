@@ -18,7 +18,6 @@ public class StatsService {
     private final ReviewRepository reviewRepository;
     private final TagRepository tagRepository;
 
-    // all counts come from one snapshot, so they always add up
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public StatsResponse getStats() {
         long posts = postRepository.count();

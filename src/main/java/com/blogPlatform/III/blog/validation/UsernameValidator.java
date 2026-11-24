@@ -17,17 +17,11 @@ public class UsernameValidator implements ConstraintValidator<Username, String> 
             return true;
         }
         if (username.length() < MIN_LENGTH || username.length() > MAX_LENGTH) {
-            return reject(context, "must be between " + MIN_LENGTH + " and " + MAX_LENGTH + " characters");
+            return Violations.reject(context, "must be between " + MIN_LENGTH + " and " + MAX_LENGTH + " characters");
         }
         if (!ALLOWED.matcher(username).matches()) {
-            return reject(context, "may contain only letters, digits, '.', '_' and '-'");
+            return Violations.reject(context, "may contain only letters, digits, '.', '_' and '-'");
         }
         return true;
-    }
-
-    private static boolean reject(ConstraintValidatorContext context, String message) {
-        context.disableDefaultConstraintViolation();
-        context.buildConstraintViolationWithTemplate(message).addConstraintViolation();
-        return false;
     }
 }

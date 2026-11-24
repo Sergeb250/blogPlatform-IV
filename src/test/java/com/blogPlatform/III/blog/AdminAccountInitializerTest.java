@@ -32,7 +32,6 @@ class AdminAccountInitializerTest {
 
     @BeforeEach
     void noAdminYet() {
-        // rolled back after each test, like everything else here
         jdbc.update("DELETE ur FROM user_roles ur JOIN roles r ON r.role_id = ur.role_id WHERE r.name = 'ADMIN'");
     }
 

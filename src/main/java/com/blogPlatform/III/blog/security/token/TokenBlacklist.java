@@ -1,42 +1,43 @@
 package com.blogPlatform.III.blog.security.token;
 
-import org.springframework.scheduling.annotation.Scheduled;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Expiry;
 import org.springframework.stereotype.Component;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-// Revoked tokens. A JWT can't be deleted (the server keeps no copy), so "log out" means: remember the token's
-// id here, and JwtAuthenticationFilter refuses it from then on.
+// Each entry expires together with its token: after that the token is refused by its own expiry anyway.
+// No maximum size on purpose: evicting an entry early would make a revoked token valid again.
 @Component
 public class TokenBlacklist {
 
-    // token id (jti) -> the token's own expiry. ConcurrentHashMap: many request threads read it at the same time
-    private final Map<String, Instant> revoked = new ConcurrentHashMap<>();
+    private final Cache<String, Instant> revoked;
+
+    public TokenBlacklist(Clock clock) {
+        this.revoked = Caffeine.newBuilder()
+                .ticker(() -> Duration.between(Instant.EPOCH, clock.instant()).toNanos())
+                .expireAfter(Expiry.writing((String tokenId, Instant expiresAt) -> timeLeft(clock, expiresAt)))
+                .build();
+    }
 
     public void revoke(String tokenId, Instant expiresAt) {
         revoked.put(tokenId, expiresAt);
     }
 
-    // one hash lookup per request: O(1), however many tokens are revoked
     public boolean isRevoked(String tokenId) {
-        return revoked.containsKey(tokenId);
+        return revoked.getIfPresent(tokenId) != null;
     }
 
     public int size() {
-        return revoked.size();
+        revoked.cleanUp();
+        return (int) revoked.estimatedSize();
     }
 
-    // an expired token is refused by its "exp" claim anyway, so its entry is no longer needed: the map stays small
-    @Scheduled(fixedRate = 60_000)
-    public void purgeExpired() {
-        removeExpired(Instant.now());
-    }
-
-    public int removeExpired(Instant now) {
-        int before = revoked.size();
-        revoked.values().removeIf(expiresAt -> expiresAt.isBefore(now));
-        return before - revoked.size();
+    private static Duration timeLeft(Clock clock, Instant expiresAt) {
+        Duration left = Duration.between(clock.instant(), expiresAt);
+        return left.isNegative() ? Duration.ZERO : left;
     }
 }

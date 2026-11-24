@@ -30,10 +30,8 @@ public class ReviewService {
     @CacheEvict(cacheNames = {CacheConfig.POPULAR_POSTS, CacheConfig.TOP_RATED_POSTS}, allEntries = true)
     @Transactional
     public ReviewResponse add(Long postId, Long userId, ReviewRequest request) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new ResourceNotFoundException("Post " + postId + " not found"));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " not found"));
+        Post post = postRepository.findOrThrow(postId);
+        User user = userRepository.findOrThrow(userId);
 
         if (reviewRepository.existsByPostIdAndUserId(postId, user.getId())) {
             throw new DuplicateResourceException("User " + user.getId() + " already reviewed post " + postId);
@@ -48,9 +46,7 @@ public class ReviewService {
     }
 
     public PageResponse<ReviewResponse> getByPost(Long postId, Pageable pageable) {
-        if (!postRepository.existsById(postId)) {
-            throw new ResourceNotFoundException("Post " + postId + " not found");
-        }
+        postRepository.requireExists(postId);
         return PageResponse.from(reviewRepository.findByPostId(postId, pageable).map(ReviewResponse::from));
     }
 
@@ -60,7 +56,6 @@ public class ReviewService {
         Review review = reviewRepository.findByIdAndPostId(reviewId, postId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Review " + reviewId + " not found on post " + postId));
-        // soft delete (@SQLDelete on Review): UPDATE reviews SET deleted_at = NOW(6) ...
         reviewRepository.delete(review);
     }
 }

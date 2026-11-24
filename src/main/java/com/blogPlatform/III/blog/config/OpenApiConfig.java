@@ -3,17 +3,15 @@ package com.blogPlatform.III.blog.config;
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
-import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
-import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.prepost.PreAuthorize;
 
-import java.util.List;
+import java.util.ArrayList;
 
 @Configuration
 public class OpenApiConfig {
@@ -56,11 +54,11 @@ public class OpenApiConfig {
                         .scheme("bearer")
                         .bearerFormat("JWT")
                         .description("The accessToken from POST /api/auth/login")))
-                // every operation needs the token, except the public ones (publicEndpoints below)
                 .addSecurityItem(new SecurityRequirement().addList(BEARER));
     }
 
-    // the endpoint's own @PreAuthorize, written into its description: the docs can't drift from the real rule
+    // Every operation ends with who may call it: its @PreAuthorize rule, or "public" (no lock) when it has none.
+    // The endpoints without a @PreAuthorize are exactly the ones SecurityConfig opens: sign-up, login and GET reads.
     @Bean
     public OperationCustomizer accessRules() {
         return (operation, handlerMethod) -> {
@@ -68,32 +66,14 @@ public class OpenApiConfig {
             if (rule == null) {
                 rule = handlerMethod.getBeanType().getAnnotation(PreAuthorize.class);
             }
-            if (rule != null) {
+            if (rule == null) {
+                operation.setSecurity(new ArrayList<>());
+                appendAccess(operation, "public, no token needed");
+            } else {
                 appendAccess(operation, "`" + rule.value() + "`");
             }
             return operation;
         };
-    }
-
-    // The public endpoints of SecurityConfig: no lock in Swagger UI. Keep the two lists in step (OpenApiTest checks).
-    @Bean
-    public OpenApiCustomizer publicEndpoints() {
-        return openApi -> openApi.getPaths().forEach((path, item) -> item.readOperationsMap().forEach((method, operation) -> {
-            if (isPublic(method, path)) {
-                operation.setSecurity(List.of());
-                appendAccess(operation, "public, no token needed");
-            } else if (operation.getDescription() == null || !operation.getDescription().contains(ACCESS)) {
-                appendAccess(operation, "any logged-in user");
-            }
-        }));
-    }
-
-    private static boolean isPublic(PathItem.HttpMethod method, String path) {
-        boolean signUpOrLogin = method == PathItem.HttpMethod.POST
-                && (path.equals("/api/auth/register") || path.equals("/api/auth/login"));
-        boolean blogRead = method == PathItem.HttpMethod.GET
-                && (path.startsWith("/api/posts") || path.startsWith("/api/tags"));
-        return signUpOrLogin || blogRead;
     }
 
     private static void appendAccess(Operation operation, String rule) {

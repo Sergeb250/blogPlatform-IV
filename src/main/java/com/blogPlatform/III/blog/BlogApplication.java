@@ -6,9 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-// finds @ConfigurationProperties records such as JwtProperties (app.jwt.*)
 @ConfigurationPropertiesScan
-// runs the @Scheduled clean-ups (expired entries of the token blacklist and of the session registry)
 @EnableScheduling
 public class BlogApplication {
 

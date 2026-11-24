@@ -16,7 +16,6 @@ public interface TagRepository extends JpaRepository<Tag, Long> {
     boolean existsByName(String name);
 
     // native SQL: @SQLRestriction is not added, so deleted tags are left out and only live posts are counted by hand.
-    // Paged: Hibernate appends LIMIT/OFFSET; the count query counts the live tags (one row per tag)
     @Query(value = """
             SELECT t.tag_id AS tagId, t.name AS name, COUNT(p.post_id) AS postCount
             FROM tags t

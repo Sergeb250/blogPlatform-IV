@@ -15,8 +15,6 @@ public record SecurityReport(
         int revokedTokens,
         List<String> blockedNow,
         List<CountEntry> suspectedBruteForce,
-        List<CountEntry> topFailedUsernames,
-        List<CountEntry> topFailedIps,
         List<CountEntry> topEndpoints,
         List<CountEntry> topUsers
 ) {

@@ -32,10 +32,8 @@ public class CommentService {
     @CacheEvict(cacheNames = CacheConfig.POPULAR_POSTS, allEntries = true)
     @Transactional
     public CommentResponse add(Long postId, Long userId, CommentRequest request) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new ResourceNotFoundException("Post " + postId + " not found"));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " not found"));
+        Post post = postRepository.findOrThrow(postId);
+        User user = userRepository.findOrThrow(userId);
 
         Comment comment = new Comment();
         comment.setPost(post);
@@ -45,22 +43,20 @@ public class CommentService {
     }
 
     public PageResponse<CommentResponse> getByPost(Long postId, Pageable pageable) {
-        checkPostExists(postId);
+        postRepository.requireExists(postId);
 
         Page<Comment> page = commentRepository.findByPostId(postId, pageable);
         return PageResponse.from(page.map(CommentResponse::from));
     }
 
     public long countByPost(Long postId) {
-        checkPostExists(postId);
+        postRepository.requireExists(postId);
         return commentRepository.countByPostId(postId);
     }
 
     @Transactional
     public CommentResponse update(Long postId, Long commentId, CommentUpdateRequest request) {
-        Comment comment = commentRepository.findByIdAndPostId(commentId, postId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Comment " + commentId + " not found on post " + postId));
+        Comment comment = findComment(postId, commentId);
 
         if (!comment.getVersion().equals(request.version())) {
             throw new ObjectOptimisticLockingFailureException(Comment.class, commentId);
@@ -73,16 +69,13 @@ public class CommentService {
     @CacheEvict(cacheNames = CacheConfig.POPULAR_POSTS, allEntries = true)
     @Transactional
     public void delete(Long postId, Long commentId) {
-        Comment comment = commentRepository.findByIdAndPostId(commentId, postId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Comment " + commentId + " not found on post " + postId));
-        // soft delete (@SQLDelete on Comment): UPDATE comments SET deleted_at = NOW(6) ...
+        Comment comment = findComment(postId, commentId);
         commentRepository.delete(comment);
     }
 
-    private void checkPostExists(Long postId) {
-        if (!postRepository.existsById(postId)) {
-            throw new ResourceNotFoundException("Post " + postId + " not found");
-        }
+    private Comment findComment(Long postId, Long commentId) {
+        return commentRepository.findByIdAndPostId(commentId, postId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Comment " + commentId + " not found on post " + postId));
     }
 }
